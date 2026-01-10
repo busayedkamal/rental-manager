@@ -1,22 +1,23 @@
 import { createClient } from '@supabase/supabase-js'
 
 export default defineNuxtRouteMiddleware(async (to, from) => {
-  // تخطي هذه الخطوة إذا كنا على السيرفر (نريد التحقق في المتصفح فقط)
   if (process.server) return
 
-  // إعداد الاتصال للتحقق من الجلسة
   const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_KEY)
-  
-  // هل يوجد مستخدم مسجل حالياً؟
   const { data: { session } } = await supabase.auth.getSession()
 
-  // 1. إذا لم يكن مسجلاً، ويحاول الذهاب لأي صفحة غير صفحة الدخول -> اطرده للدخول
-  if (!session && to.path !== '/login') {
+  // 1. قائمة الصفحات العامة (المسموح للجميع بدخولها)
+  // تشمل: الرئيسية، تسجيل الدخول، وصفحات بوابة المستأجرين
+  const publicPages = ['/', '/login']
+  const isPublicPage = publicPages.includes(to.path) || to.path.startsWith('/portal')
+
+  // 2. إذا لم يكن مسجلاً، ويحاول دخول صفحة محمية (مثل /dashboard) -> اطرده للدخول
+  if (!session && !isPublicPage) {
     return navigateTo('/login')
   }
 
-  // 2. إذا كان مسجلاً بالفعل، ويحاول الذهاب لصفحة الدخول -> حوله للرئيسية
+  // 3. إذا كان مسجلاً (المدير)، ويحاول دخول صفحة الدخول -> حوله للوحة التحكم
   if (session && to.path === '/login') {
-    return navigateTo('/')
+    return navigateTo('/dashboard')
   }
 })

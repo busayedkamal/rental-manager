@@ -1,14 +1,14 @@
 <template>
-  <div v-if="$route.path !== '/login'" class="min-h-screen bg-gray-100 font-sans flex" dir="rtl">
+  <div v-if="!isPublicPage" class="min-h-screen bg-gray-100 font-sans flex" dir="rtl">
     
     <aside class="w-64 bg-slate-900 text-white flex flex-col shadow-xl sticky top-0 h-screen">
       <div class="p-6 text-center border-b border-slate-700">
         <h1 class="text-2xl font-bold text-white">مدير العقارات 🏢</h1>
-        <p class="text-slate-400 text-xs mt-1">نسخة المدير (Admin)</p>
+        <p class="text-slate-400 text-xs mt-1">لوحة التحكم (Admin)</p>
       </div>
       
       <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
-        <NuxtLink to="/" class="nav-item" active-class="active">📊 لوحة القيادة</NuxtLink>
+        <NuxtLink to="/dashboard" class="nav-item" active-class="active">📊 لوحة القيادة</NuxtLink>
         <NuxtLink to="/tenants" class="nav-item" active-class="active">👥 المستأجرين</NuxtLink>
         <NuxtLink to="/units" class="nav-item" active-class="active">🏢 الوحدات العقارية</NuxtLink>
         <NuxtLink to="/contracts" class="nav-item" active-class="active">📝 العقود والإيجارات</NuxtLink>
@@ -34,15 +34,23 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { createClient } from '@supabase/supabase-js'
+
 const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_KEY)
+const route = useRoute()
+
+// تحديد هل الصفحة الحالية عامة أم خاصة
+const isPublicPage = computed(() => {
+  // القائمة السوداء للصفحات التي لا نريد فيها القائمة الجانبية
+  return ['/', '/login'].includes(route.path) || route.path.startsWith('/portal')
+})
 
 const logout = async () => {
-  const confirmLogout = confirm('هل أنت متأكد من تسجيل الخروج؟')
-  if (confirmLogout) {
+  if (confirm('هل أنت متأكد من تسجيل الخروج؟')) {
     await supabase.auth.signOut()
-    // إعادة تحميل الصفحة لتفعيل الحارس وتحويلك للدخول
-    window.location.href = '/login'
+    window.location.href = '/' // الرجوع للصفحة الرئيسية
   }
 }
 </script>

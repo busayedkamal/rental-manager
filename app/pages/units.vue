@@ -2,9 +2,9 @@
   <div class="space-y-8">
     
     <div class="bg-white rounded-xl shadow-md p-6 border-t-4 border-blue-500">
-      <h2 class="text-xl font-bold text-gray-800 mb-6">🏢 إضافة وحدة عقارية</h2>
+      <h2 class="text-xl font-bold text-gray-800 mb-6">🏢 {{ isEditing ? 'تعديل الوحدة العقارية' : 'إضافة وحدة عقارية' }}</h2>
       
-      <form @submit.prevent="addUnit" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+      <form @submit.prevent="saveUnit" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
         
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">اسم الوحدة</label>
@@ -16,6 +16,7 @@
           <select v-model="form.type" class="input-field">
             <option>شقة</option>
             <option>محل تجاري</option>
+            <option>فيلا</option>
           </select>
         </div>
         
@@ -24,9 +25,14 @@
           <input v-model="form.price" type="number" required class="input-field" placeholder="SAR" />
         </div>
 
-        <button type="submit" :disabled="loading" class="bg-blue-600 text-blue w-full py-2 rounded-lg hover:bg-blue-700 font-bold h-[42px] shadow-sm transition-colors">
-          {{ loading ? '...' : 'إضافة' }}
-        </button>
+        <div class="flex gap-2 w-full">
+          <button type="submit" :disabled="loading" class="bg-blue-600 text-white flex-1 py-2 rounded-lg hover:bg-blue-700 font-bold h-[42px]">
+            {{ loading ? '...' : (isEditing ? 'حفظ' : 'إضافة') }}
+          </button>
+           <button v-if="isEditing" @click="cancelEdit" type="button" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 font-bold h-[42px]">
+            إلغاء
+          </button>
+        </div>
         
       </form>
     </div>
@@ -43,6 +49,7 @@
             <th class="px-6 py-3 text-right">النوع</th>
             <th class="px-6 py-3 text-right">السعر</th>
             <th class="px-6 py-3 text-right">الحالة</th>
+            <th class="px-6 py-3 text-center">إجراءات</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-200">
@@ -51,16 +58,14 @@
             <td class="px-6 py-4 text-gray-600">{{ unit.type }}</td>
             <td class="px-6 py-4 text-green-600 font-bold">{{ Number(unit.price).toLocaleString() }} ريال</td>
             <td class="px-6 py-4">
-              <span 
-                class="px-2 py-1 rounded text-xs border"
-                :class="unit.status === 'شاغرة' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200'"
-              >
+              <span class="px-2 py-1 rounded text-xs border" :class="unit.status === 'شاغرة' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200'">
                 {{ unit.status }}
               </span>
             </td>
-          </tr>
-          <tr v-if="units.length === 0">
-            <td colspan="4" class="p-8 text-center text-gray-400">لا توجد وحدات مضافة بعد.</td>
+             <td class="px-6 py-4 flex justify-center gap-3">
+                <button @click="editUnit(unit)" class="text-blue-600 hover:bg-blue-100 p-2 rounded-full">✏️</button>
+                <button @click="deleteUnit(unit.id)" class="text-red-600 hover:bg-red-100 p-2 rounded-full">🗑️</button>
+              </td>
           </tr>
         </tbody>
       </table>
@@ -76,22 +81,51 @@ const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env
 const units = ref([])
 const loading = ref(false)
 const form = ref({ name: '', type: 'شقة', price: '' })
+const isEditing = ref(false)
+const editingId = ref(null)
 
 const fetchUnits = async () => {
   const { data } = await supabase.from('units').select('*').order('created_at', { ascending: false })
   units.value = data || []
 }
 
-const addUnit = async () => {
+const saveUnit = async () => {
   loading.value = true
-  const { error } = await supabase.from('units').insert([form.value])
-  if (error) {
-    alert(error.message)
+  let error = null
+  if (isEditing.value) {
+    const { error: e } = await supabase.from('units').update(form.value).eq('id', editingId.value)
+    error = e
   } else {
-    form.value = { name: '', type: 'شقة', price: '' }
+    const { error: e } = await supabase.from('units').insert([form.value])
+    error = e
+  }
+
+  if (error) alert(error.message)
+  else {
+    cancelEdit()
     fetchUnits()
   }
   loading.value = false
+}
+
+const editUnit = (unit) => {
+  form.value = { name: unit.name, type: unit.type, price: unit.price }
+  isEditing.value = true
+  editingId.value = unit.id
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+const cancelEdit = () => {
+  form.value = { name: '', type: 'شقة', price: '' }
+  isEditing.value = false
+  editingId.value = null
+}
+
+const deleteUnit = async (id) => {
+  if (!confirm('هل أنت متأكد؟')) return
+  const { error } = await supabase.from('units').delete().eq('id', id)
+  if (error) alert('لا يمكن حذف الوحدة لأنها مرتبطة بعقود. احذف العقود أولاً.')
+  else fetchUnits()
 }
 
 onMounted(() => fetchUnits())

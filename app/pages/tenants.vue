@@ -1,70 +1,68 @@
 <template>
-  <div class="min-h-screen bg-gray-50 p-10 font-sans" dir="rtl">
+  <div class="space-y-8">
     
-    <div class="max-w-4xl mx-auto space-y-8">
-      
-      <div class="bg-white rounded-xl shadow-md overflow-hidden p-6">
-        <h2 class="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-          <span>👤</span> إضافة مستأجر جديد
-        </h2>
+    <div class="bg-white rounded-xl shadow-md overflow-hidden p-6 border-t-4 border-indigo-500">
+      <h2 class="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+        <span>👤</span> {{ isEditing ? 'تعديل بيانات مستأجر' : 'إضافة مستأجر جديد' }}
+      </h2>
 
-        <form @submit.prevent="addTenant" class="flex gap-4 items-end flex-wrap">
-          <div class="flex-1 min-w-[200px]">
-            <label class="block text-sm font-medium text-gray-700 mb-1">الاسم</label>
-            <input v-model="form.name" type="text" required class="w-full rounded-lg border-gray-300 border p-2 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="الاسم الرباعي" />
-          </div>
-          <div class="flex-1 min-w-[200px]">
-            <label class="block text-sm font-medium text-gray-700 mb-1">الجوال</label>
-            <input v-model="form.phone" type="text" class="w-full rounded-lg border-gray-300 border p-2 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="05xxxxxxxx" />
-          </div>
-          <div class="flex-1 min-w-[200px]">
-            <label class="block text-sm font-medium text-gray-700 mb-1">الإيميل</label>
-            <input v-model="form.email" type="email" class="w-full rounded-lg border-gray-300 border p-2 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="اختياري" />
-          </div>
-          <button type="submit" :disabled="loading" class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50 font-bold h-[42px]">
-            {{ loading ? '...' : 'حفظ' }}
+      <form @submit.prevent="saveTenant" class="flex gap-4 items-end flex-wrap">
+        <div class="flex-1 min-w-[200px]">
+          <label class="block text-sm font-medium text-gray-700 mb-1">الاسم</label>
+          <input v-model="form.name" type="text" required class="input-field" placeholder="الاسم الرباعي" />
+        </div>
+        <div class="flex-1 min-w-[200px]">
+          <label class="block text-sm font-medium text-gray-700 mb-1">الجوال</label>
+          <input v-model="form.phone" type="text" class="input-field" placeholder="05xxxxxxxx" />
+        </div>
+        <div class="flex-1 min-w-[200px]">
+          <label class="block text-sm font-medium text-gray-700 mb-1">الإيميل</label>
+          <input v-model="form.email" type="email" class="input-field" placeholder="اختياري" />
+        </div>
+        
+        <div class="flex gap-2">
+          <button type="submit" :disabled="loading" class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 font-bold h-[42px] min-w-[100px]">
+            {{ loading ? '...' : (isEditing ? 'حفظ التعديلات' : 'إضافة') }}
           </button>
-        </form>
-        
-        <p v-if="successMsg" class="mt-3 text-green-600 font-bold text-sm">✅ {{ successMsg }}</p>
-      </div>
-
-      <div class="bg-white rounded-xl shadow-md overflow-hidden">
-        <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
-          <h2 class="text-lg font-bold text-gray-700">📋 سجل المستأجرين ({{ tenants.length }})</h2>
-          <button @click="fetchTenants" class="text-indigo-600 text-sm hover:underline">🔄 تحديث</button>
+          
+          <button v-if="isEditing" @click="cancelEdit" type="button" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 font-bold h-[42px]">
+            إلغاء
+          </button>
         </div>
-        
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50 text-gray-500 text-xs uppercase font-medium">
-              <tr>
-                <th class="px-6 py-3 text-right">الاسم</th>
-                <th class="px-6 py-3 text-right">الجوال</th>
-                <th class="px-6 py-3 text-right">الإيميل</th>
-                <th class="px-6 py-3 text-right">تاريخ التسجيل</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-200">
-              <tr v-for="tenant in tenants" :key="tenant.id" class="hover:bg-indigo-50 transition-colors">
-                <td class="px-6 py-4 font-bold text-gray-800">{{ tenant.name }}</td>
-                <td class="px-6 py-4 text-gray-600 text-right" dir="ltr">{{ tenant.phone }}</td>
-                <td class="px-6 py-4 text-gray-500">{{ tenant.email || '-' }}</td>
-                <td class="px-6 py-4 text-gray-400 text-sm">
-                  {{ new Date(tenant.created_at).toLocaleDateString('ar-SA') }}
-                </td>
-              </tr>
-              <tr v-if="tenants.length === 0">
-                <td colspan="4" class="p-8 text-center text-gray-400">
-                  لا يوجد بيانات حتى الآن.. ابدأ بالإضافة! 🚀
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
+      </form>
     </div>
+
+    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+      <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
+        <h2 class="text-lg font-bold text-gray-700">📋 سجل المستأجرين ({{ tenants.length }})</h2>
+        <button @click="fetchTenants" class="text-indigo-600 text-sm hover:underline">🔄 تحديث</button>
+      </div>
+      
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50 text-gray-500 text-xs uppercase font-medium">
+            <tr>
+              <th class="px-6 py-3 text-right">الاسم</th>
+              <th class="px-6 py-3 text-right">الجوال</th>
+              <th class="px-6 py-3 text-right">الإيميل</th>
+              <th class="px-6 py-3 text-center">إجراءات</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200">
+            <tr v-for="tenant in tenants" :key="tenant.id" class="hover:bg-indigo-50 transition-colors">
+              <td class="px-6 py-4 font-bold text-gray-800">{{ tenant.name }}</td>
+              <td class="px-6 py-4 text-gray-600" dir="ltr" class="text-right">{{ tenant.phone }}</td>
+              <td class="px-6 py-4 text-gray-500">{{ tenant.email || '-' }}</td>
+              <td class="px-6 py-4 flex justify-center gap-3">
+                <button @click="editTenant(tenant)" class="text-blue-600 hover:bg-blue-100 p-2 rounded-full" title="تعديل">✏️</button>
+                <button @click="deleteTenant(tenant.id)" class="text-red-600 hover:bg-red-100 p-2 rounded-full" title="حذف">🗑️</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
   </div>
 </template>
 
@@ -72,54 +70,71 @@
 import { ref, onMounted } from 'vue'
 import { createClient } from '@supabase/supabase-js'
 
-// الاتصال بقاعدة البيانات
 const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_KEY)
-
-// المتغيرات
 const loading = ref(false)
-const successMsg = ref('')
-const tenants = ref([]) // مصفوفة لتخزين البيانات القادمة من السحابة
+const tenants = ref([])
 const form = ref({ name: '', phone: '', email: '' })
+const isEditing = ref(false) // هل نحن في وضع التعديل؟
+const editingId = ref(null)  // معرف المستأجر الذي نعدله
 
-// 1. دالة جلب البيانات (Read)
 const fetchTenants = async () => {
-  try {
-    const { data, error } = await supabase
-      .from('tenants')
-      .select('*')
-      .order('created_at', { ascending: false }) // الأحدث في الأعلى
-
-    if (error) throw error
-    tenants.value = data
-  } catch (e) {
-    console.error('Error fetching:', e.message)
-  }
+  const { data } = await supabase.from('tenants').select('*').order('created_at', { ascending: false })
+  tenants.value = data || []
 }
 
-// 2. دالة الإضافة (Create)
-const addTenant = async () => {
+// دالة الحفظ الذكية (إضافة أو تعديل)
+const saveTenant = async () => {
   loading.value = true
-  successMsg.value = ''
+  let error = null
   
-  try {
-    const { error } = await supabase.from('tenants').insert([form.value])
-    if (error) throw error
-
-    successMsg.value = 'تمت الإضافة بنجاح!'
-    form.value = { name: '', phone: '', email: '' } // تصفير النموذج
-    
-    // تحديث الجدول فوراً لظهور الاسم الجديد
-    await fetchTenants() 
-    
-  } catch (e) {
-    alert('خطأ: ' + e.message)
-  } finally {
-    loading.value = false
+  if (isEditing.value) {
+    // تعديل
+    const { error: updateError } = await supabase.from('tenants').update(form.value).eq('id', editingId.value)
+    error = updateError
+  } else {
+    // إضافة جديد
+    const { error: insertError } = await supabase.from('tenants').insert([form.value])
+    error = insertError
   }
+
+  if (error) {
+    alert('حدث خطأ: ' + error.message)
+  } else {
+    cancelEdit() // تصفير النموذج
+    fetchTenants()
+  }
+  loading.value = false
 }
 
-// تشغيل جلب البيانات عند فتح الصفحة
-onMounted(() => {
-  fetchTenants()
-})
+// تجهيز النموذج للتعديل
+const editTenant = (tenant) => {
+  form.value = { name: tenant.name, phone: tenant.phone, email: tenant.email }
+  isEditing.value = true
+  editingId.value = tenant.id
+  window.scrollTo({ top: 0, behavior: 'smooth' }) // الصعود للأعلى
+}
+
+// إلغاء التعديل وتفريغ النموذج
+const cancelEdit = () => {
+  form.value = { name: '', phone: '', email: '' }
+  isEditing.value = false
+  editingId.value = null
+}
+
+// الحذف
+const deleteTenant = async (id) => {
+  if (!confirm('هل أنت متأكد من الحذف؟ سيتم حذف جميع العقود والفواتير المرتبطة به!')) return
+  
+  const { error } = await supabase.from('tenants').delete().eq('id', id)
+  if (error) alert('لا يمكن الحذف لوجود سجلات مرتبطة (عقود/فواتير). احذف العقود أولاً.')
+  else fetchTenants()
+}
+
+onMounted(() => fetchTenants())
 </script>
+
+<style scoped>
+.input-field {
+  @apply w-full rounded-lg border-gray-300 border p-2 focus:ring-2 focus:ring-indigo-500 outline-none h-[42px];
+}
+</style>

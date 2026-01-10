@@ -44,7 +44,7 @@
             <tr>
               <th class="px-6 py-3 text-right">الاسم</th>
               <th class="px-6 py-3 text-right">الجوال</th>
-              <th class="px-6 py-3 text-right">الإيميل</th>
+              <th class="px-6 py-3 text-right">بوابة المستأجر</th>
               <th class="px-6 py-3 text-center">إجراءات</th>
             </tr>
           </thead>
@@ -52,7 +52,13 @@
             <tr v-for="tenant in tenants" :key="tenant.id" class="hover:bg-indigo-50 transition-colors">
               <td class="px-6 py-4 font-bold text-gray-800">{{ tenant.name }}</td>
               <td class="px-6 py-4 text-gray-600 text-right" dir="ltr">{{ tenant.phone }}</td>
-              <td class="px-6 py-4 text-gray-500">{{ tenant.email || '-' }}</td>
+              
+              <td class="px-6 py-4">
+                <button @click="copyPortalLink(tenant.id)" class="text-xs bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full border border-indigo-200 hover:bg-indigo-200 flex items-center gap-1 w-fit transition">
+                  🔗 نسخ الرابط
+                </button>
+              </td>
+
               <td class="px-6 py-4 flex justify-center gap-3">
                 <button @click="editTenant(tenant)" class="text-blue-600 hover:bg-blue-100 p-2 rounded-full" title="تعديل">✏️</button>
                 <button @click="deleteTenant(tenant.id)" class="text-red-600 hover:bg-red-100 p-2 rounded-full" title="حذف">🗑️</button>
@@ -120,6 +126,14 @@ const deleteTenant = async (id) => {
   const { error } = await supabase.from('tenants').delete().eq('id', id)
   if (error) alert('لا يمكن الحذف: توجد بيانات مرتبطة.')
   else fetchTenants()
+}
+
+// دالة نسخ الرابط السحري
+const copyPortalLink = (id) => {
+  // إنشاء الرابط الكامل بناءً على الدومين الحالي
+  const url = `${window.location.origin}/portal/${id}`
+  navigator.clipboard.writeText(url)
+  alert('تم نسخ رابط بوابة المستأجر! 📋\n\nأرسله للمستأجر ليدخل إلى لوحته مباشرة.')
 }
 
 onMounted(() => fetchTenants())

@@ -86,8 +86,8 @@
               <span class="px-2 py-1 rounded text-xs bg-green-100 text-green-800 border border-green-200">{{ c.status }}</span>
             </td>
             <td class="px-6 py-4 flex justify-center gap-3">
-              <button @click="editContract(c)" class="text-blue-600 hover:bg-blue-100 p-2 rounded-full">✏️</button>
-              <button @click="deleteContract(c.id, c.unit_id)" class="text-red-600 hover:bg-red-100 p-2 rounded-full">🗑️</button>
+              <button @click="editContract(c)" class="text-blue-600 hover:bg-blue-100 p-2 rounded-full" title="تعديل">✏️</button>
+              <button @click="deleteContract(c.id, c.unit_id)" class="text-red-600 hover:bg-red-100 p-2 rounded-full" title="حذف وإنهاء">🗑️</button>
             </td>
           </tr>
         </tbody>
@@ -120,8 +120,11 @@ const form = ref({
 const fetchData = async () => {
   const { data: t } = await supabase.from('tenants').select('id, name')
   tenants.value = t || []
+  
+  // نجلب كل الوحدات لنعرض الأسماء، لكن عند الاختيار سنحتاج معرفة حالتها
   const { data: u } = await supabase.from('units').select('id, name, type, status')
   units.value = u || []
+  
   const { data: c } = await supabase.from('contracts').select(`*, tenants (name), units (name)`).order('created_at', { ascending: false })
   contracts.value = c || []
 }
@@ -130,7 +133,7 @@ const saveContract = async () => {
   loading.value = true
   
   if (isEditing.value) {
-    // تحديث البيانات الأساسية فقط (بدون الفواتير)
+    // 1. التعديل (يعدل التواريخ والمبلغ فقط ولا يلمس الفواتير)
     const { error } = await supabase.from('contracts').update({
       start_date: form.value.start_date,
       end_date: form.value.end_date,
@@ -146,7 +149,7 @@ const saveContract = async () => {
     return
   }
 
-  // إضافة جديد (نفس الكود السابق)
+  // 2. الإضافة (ينشئ العقد + الفواتير + يغير حالة الوحدة)
   try {
     const { data: contractData, error: contractError } = await supabase
       .from('contracts')
@@ -161,8 +164,10 @@ const saveContract = async () => {
 
     if (contractError) throw contractError
 
+    // تحديث حالة الوحدة
     await supabase.from('units').update({ status: 'مؤجرة' }).eq('id', form.value.unit_id)
 
+    // توليد الفواتير
     const contractId = contractData.id
     const totalAmount = Number(form.value.amount)
     const parts = Number(form.value.frequency)
@@ -210,9 +215,10 @@ const cancelEdit = () => {
 }
 
 const deleteContract = async (id, unitId) => {
-  if (!confirm('هل أنت متأكد؟ سيتم حذف جميع الفواتير المرتبطة بهذا العقد!')) return
+  if (!confirm('⚠️ تحذير هام:\nحذف العقد سيقوم بحذف جميع سجلات الفواتير والمدفوعات المرتبطة به نهائياً!\n\nهل أنت متأكد من الحذف؟')) return
   
   loading.value = true
+  
   // 1. حذف الفواتير أولاً
   await supabase.from('invoices').delete().eq('contract_id', id)
   

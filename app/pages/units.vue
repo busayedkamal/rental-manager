@@ -62,9 +62,9 @@
                 {{ unit.status }}
               </span>
             </td>
-             <td class="px-6 py-4 flex justify-center gap-3">
-                <button @click="editUnit(unit)" class="text-blue-600 hover:bg-blue-100 p-2 rounded-full">✏️</button>
-                <button @click="deleteUnit(unit.id)" class="text-red-600 hover:bg-red-100 p-2 rounded-full">🗑️</button>
+            <td class="px-6 py-4 flex justify-center gap-3">
+                <button @click="editUnit(unit)" class="text-blue-600 hover:bg-blue-100 p-2 rounded-full" title="تعديل">✏️</button>
+                <button @click="deleteUnit(unit.id)" class="text-red-600 hover:bg-red-100 p-2 rounded-full" title="حذف">🗑️</button>
               </td>
           </tr>
         </tbody>
@@ -89,13 +89,17 @@ const fetchUnits = async () => {
   units.value = data || []
 }
 
+// دالة ذكية للإضافة والتعديل
 const saveUnit = async () => {
   loading.value = true
   let error = null
+  
   if (isEditing.value) {
+    // كود التعديل
     const { error: e } = await supabase.from('units').update(form.value).eq('id', editingId.value)
     error = e
   } else {
+    // كود الإضافة
     const { error: e } = await supabase.from('units').insert([form.value])
     error = e
   }
@@ -108,6 +112,7 @@ const saveUnit = async () => {
   loading.value = false
 }
 
+// تعبئة النموذج عند الضغط على زر التعديل
 const editUnit = (unit) => {
   form.value = { name: unit.name, type: unit.type, price: unit.price }
   isEditing.value = true
@@ -115,17 +120,25 @@ const editUnit = (unit) => {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
+// إلغاء الوضع
 const cancelEdit = () => {
   form.value = { name: '', type: 'شقة', price: '' }
   isEditing.value = false
   editingId.value = null
 }
 
+// الحذف مع التحقق
 const deleteUnit = async (id) => {
-  if (!confirm('هل أنت متأكد؟')) return
+  if (!confirm('هل أنت متأكد من حذف هذه الوحدة؟')) return
+  
   const { error } = await supabase.from('units').delete().eq('id', id)
-  if (error) alert('لا يمكن حذف الوحدة لأنها مرتبطة بعقود. احذف العقود أولاً.')
-  else fetchUnits()
+  
+  if (error) {
+    // رسالة ذكية إذا كان الحذف ممنوعاً
+    alert('⚠️ لا يمكن حذف الوحدة لأنها مرتبطة بعقود مسجلة.\n\nالرجاء حذف العقود المرتبطة بها أولاً.')
+  } else {
+    fetchUnits()
+  }
 }
 
 onMounted(() => fetchUnits())

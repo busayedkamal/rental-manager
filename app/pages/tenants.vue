@@ -51,7 +51,7 @@
           <tbody class="divide-y divide-gray-200">
             <tr v-for="tenant in tenants" :key="tenant.id" class="hover:bg-indigo-50 transition-colors">
               <td class="px-6 py-4 font-bold text-gray-800">{{ tenant.name }}</td>
-              <td class="px-6 py-4 text-gray-600" dir="ltr" class="text-right">{{ tenant.phone }}</td>
+              <td class="px-6 py-4 text-gray-600 text-right" dir="ltr">{{ tenant.phone }}</td>
               <td class="px-6 py-4 text-gray-500">{{ tenant.email || '-' }}</td>
               <td class="px-6 py-4 flex justify-center gap-3">
                 <button @click="editTenant(tenant)" class="text-blue-600 hover:bg-blue-100 p-2 rounded-full" title="تعديل">✏️</button>
@@ -74,59 +74,51 @@ const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env
 const loading = ref(false)
 const tenants = ref([])
 const form = ref({ name: '', phone: '', email: '' })
-const isEditing = ref(false) // هل نحن في وضع التعديل؟
-const editingId = ref(null)  // معرف المستأجر الذي نعدله
+const isEditing = ref(false)
+const editingId = ref(null)
 
 const fetchTenants = async () => {
   const { data } = await supabase.from('tenants').select('*').order('created_at', { ascending: false })
   tenants.value = data || []
 }
 
-// دالة الحفظ الذكية (إضافة أو تعديل)
 const saveTenant = async () => {
   loading.value = true
   let error = null
   
   if (isEditing.value) {
-    // تعديل
     const { error: updateError } = await supabase.from('tenants').update(form.value).eq('id', editingId.value)
     error = updateError
   } else {
-    // إضافة جديد
     const { error: insertError } = await supabase.from('tenants').insert([form.value])
     error = insertError
   }
 
-  if (error) {
-    alert('حدث خطأ: ' + error.message)
-  } else {
-    cancelEdit() // تصفير النموذج
+  if (error) alert('خطأ: ' + error.message)
+  else {
+    cancelEdit()
     fetchTenants()
   }
   loading.value = false
 }
 
-// تجهيز النموذج للتعديل
 const editTenant = (tenant) => {
   form.value = { name: tenant.name, phone: tenant.phone, email: tenant.email }
   isEditing.value = true
   editingId.value = tenant.id
-  window.scrollTo({ top: 0, behavior: 'smooth' }) // الصعود للأعلى
+  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-// إلغاء التعديل وتفريغ النموذج
 const cancelEdit = () => {
   form.value = { name: '', phone: '', email: '' }
   isEditing.value = false
   editingId.value = null
 }
 
-// الحذف
 const deleteTenant = async (id) => {
-  if (!confirm('هل أنت متأكد من الحذف؟ سيتم حذف جميع العقود والفواتير المرتبطة به!')) return
-  
+  if (!confirm('تنبيه: سيتم حذف المستأجر وجميع العقود المرتبطة به! هل أنت متأكد؟')) return
   const { error } = await supabase.from('tenants').delete().eq('id', id)
-  if (error) alert('لا يمكن الحذف لوجود سجلات مرتبطة (عقود/فواتير). احذف العقود أولاً.')
+  if (error) alert('لا يمكن الحذف: توجد بيانات مرتبطة.')
   else fetchTenants()
 }
 

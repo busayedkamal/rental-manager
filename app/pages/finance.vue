@@ -29,8 +29,8 @@
             <th class="px-6 py-3 text-right">تاريخ الاستحقاق</th>
             <th class="px-6 py-3 text-right">المبلغ</th>
             <th class="px-6 py-3 text-right">الحالة</th>
-            <th class="px-6 py-3 text-center">إجراء</th>
-            <th class="px-6 py-3 text-center">تعديل</th>
+            <th class="px-6 py-3 text-center">إجراء سريع</th>
+            <th class="px-6 py-3 text-center">تعديل / حذف</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-200">
@@ -61,8 +61,8 @@
               <span v-else class="text-green-600 text-xl">✅</span>
             </td>
             <td class="px-6 py-4 text-center flex justify-center gap-2">
-              <button @click="openEditModal(inv)" class="text-blue-600 hover:bg-blue-100 p-2 rounded-full">✏️</button>
-              <button @click="deleteInvoice(inv.id)" class="text-red-600 hover:bg-red-100 p-2 rounded-full">🗑️</button>
+              <button @click="openEditModal(inv)" class="text-blue-600 hover:bg-blue-100 p-2 rounded-full" title="تعديل">✏️</button>
+              <button @click="deleteInvoice(inv.id)" class="text-red-600 hover:bg-red-100 p-2 rounded-full" title="حذف">🗑️</button>
             </td>
           </tr>
         </tbody>
@@ -71,26 +71,26 @@
 
     <div v-if="showModal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
       <div class="bg-white w-full max-w-sm rounded-xl shadow-2xl p-6">
-        <h3 class="text-lg font-bold mb-4 border-b pb-2">تعديل الفاتورة</h3>
+        <h3 class="text-lg font-bold mb-4 border-b pb-2">تعديل بيانات الفاتورة</h3>
         <form @submit.prevent="saveInvoiceEdit" class="space-y-4">
           <div>
-            <label class="block text-sm text-gray-600">تاريخ الاستحقاق</label>
-            <input v-model="editForm.due_date" type="date" class="w-full border p-2 rounded" required>
+            <label class="block text-sm text-gray-600 mb-1">تاريخ الاستحقاق</label>
+            <input v-model="editForm.due_date" type="date" class="w-full border p-2 rounded outline-none focus:border-indigo-500" required>
           </div>
           <div>
-            <label class="block text-sm text-gray-600">المبلغ</label>
-            <input v-model="editForm.amount" type="number" class="w-full border p-2 rounded" required>
+            <label class="block text-sm text-gray-600 mb-1">المبلغ (SAR)</label>
+            <input v-model="editForm.amount" type="number" class="w-full border p-2 rounded outline-none focus:border-indigo-500" required>
           </div>
           <div>
-            <label class="block text-sm text-gray-600">الحالة</label>
-            <select v-model="editForm.status" class="w-full border p-2 rounded">
+            <label class="block text-sm text-gray-600 mb-1">الحالة</label>
+            <select v-model="editForm.status" class="w-full border p-2 rounded outline-none focus:border-indigo-500">
               <option>غير مدفوع</option>
               <option>مدفوع</option>
             </select>
           </div>
-          <div class="flex gap-2 mt-4">
-            <button type="submit" class="flex-1 bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700 font-bold">حفظ</button>
-            <button @click="showModal = false" type="button" class="flex-1 bg-gray-200 text-gray-700 py-2 rounded hover:bg-gray-300">إلغاء</button>
+          <div class="flex gap-2 mt-6">
+            <button type="submit" class="flex-1 bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700 font-bold">حفظ التعديلات</button>
+            <button @click="showModal = false" type="button" class="flex-1 bg-gray-200 text-gray-700 py-2 rounded hover:bg-gray-300 font-bold">إلغاء</button>
           </div>
         </form>
       </div>
@@ -109,7 +109,7 @@ const loadingId = ref(null)
 const showModal = ref(false)
 const editForm = ref({})
 
-// حساب المجاميع
+// حساب المجاميع المحدثة
 const totalUnpaid = computed(() => invoices.value.filter(i => i.status !== 'مدفوع').reduce((sum, i) => sum + i.amount, 0))
 const totalPaid = computed(() => invoices.value.filter(i => i.status === 'مدفوع').reduce((sum, i) => sum + i.amount, 0))
 
@@ -118,26 +118,28 @@ const fetchInvoices = async () => {
   invoices.value = data || []
 }
 
+// دفع سريع
 const payInvoice = async (id) => {
-  if (!confirm('هل تم استلام المبلغ نقداً/تحويل؟')) return
+  if (!confirm('هل أنت متأكد من استلام مبلغ هذه الفاتورة؟')) return
   loadingId.value = id
   await supabase.from('invoices').update({ status: 'مدفوع' }).eq('id', id)
   loadingId.value = null
   fetchInvoices()
 }
 
+// التحقق من التأخير
 const isOverdue = (inv) => {
   if (inv.status === 'مدفوع') return false
   return new Date(inv.due_date) < new Date()
 }
 
-// فتح نافذة التعديل
+// 1. فتح نافذة التعديل
 const openEditModal = (inv) => {
   editForm.value = { id: inv.id, due_date: inv.due_date, amount: inv.amount, status: inv.status }
   showModal.value = true
 }
 
-// حفظ التعديلات
+// 2. حفظ التعديلات من النافذة
 const saveInvoiceEdit = async () => {
   const { error } = await supabase.from('invoices').update({
     due_date: editForm.value.due_date,
@@ -152,9 +154,9 @@ const saveInvoiceEdit = async () => {
   }
 }
 
-// حذف فاتورة فردية
+// 3. حذف فاتورة
 const deleteInvoice = async (id) => {
-  if (!confirm('حذف هذه الفاتورة؟ لن يمكنك التراجع.')) return
+  if (!confirm('⚠️ تحذير: هل تريد حذف هذه الفاتورة نهائياً؟')) return
   await supabase.from('invoices').delete().eq('id', id)
   fetchInvoices()
 }

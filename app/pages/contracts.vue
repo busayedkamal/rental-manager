@@ -2,10 +2,8 @@
   <div class="space-y-8">
     
     <div class="bg-white rounded-xl shadow-md p-6 border-t-4 border-indigo-500">
-      <h2 class="text-xl font-bold text-gray-800 mb-6">📝 {{ isEditing ? 'تعديل بيانات العقد' : 'توقيع عقد جديد (متعدد الوحدات)' }}</h2>
-      
+      <h2 class="text-xl font-bold text-gray-800 mb-6">📝 {{ isEditing ? 'تعديل بيانات العقد' : 'توقيع عقد جديد' }}</h2>
       <form @submit.prevent="saveContract" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">المستأجر</label>
           <select v-model="form.tenant_id" required class="input-field" :disabled="isEditing">
@@ -13,45 +11,19 @@
             <option v-for="t in tenants" :key="t.id" :value="t.id">{{ t.name }}</option>
           </select>
         </div>
-
         <div class="md:row-span-3">
-          <label class="block text-sm font-medium text-gray-700 mb-2">
-            الوحدات المشمولة بالعقد 
-            <span class="text-xs text-gray-400 font-normal">(يمكنك اختيار أكثر من وحدة)</span>
-          </label>
-          
+          <label class="block text-sm font-medium text-gray-700 mb-2">الوحدات المشمولة</label>
           <div class="border rounded-xl p-3 h-[250px] overflow-y-auto bg-gray-50 space-y-2">
-            <div v-if="availableUnits.length === 0" class="text-center text-gray-400 text-sm py-4">
-              لا توجد وحدات شاغرة حالياً
-            </div>
-            
-            <label 
-              v-for="u in availableUnits" 
-              :key="u.id" 
-              class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 bg-white hover:border-indigo-500 cursor-pointer transition shadow-sm"
-              :class="{'ring-2 ring-indigo-500 border-indigo-500 bg-indigo-50': form.selected_units.includes(u.id)}"
-            >
-              <input 
-                type="checkbox" 
-                :value="u.id" 
-                v-model="form.selected_units" 
-                class="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500"
-                :disabled="isEditing" 
-              />
+            <label v-for="u in allUnitsForSelection" :key="u.id" class="flex items-center gap-3 p-3 rounded-lg border bg-white hover:border-indigo-500 cursor-pointer" :class="{'ring-2 ring-indigo-500 bg-indigo-50': form.selected_units.includes(u.id)}">
+              <input type="checkbox" :value="u.id" v-model="form.selected_units" class="w-5 h-5 text-indigo-600 rounded" />
               <div class="flex-1">
                 <div class="font-bold text-gray-800">{{ u.name }}</div>
-                <div class="text-xs text-gray-500 flex justify-between">
-                  <span>{{ u.type }}</span>
-                  <span class="text-indigo-600">{{ Number(u.price).toLocaleString() }} ريال</span>
-                </div>
+                <div class="text-xs text-gray-500">{{ u.type }} - {{ Number(u.price).toLocaleString() }} ريال</div>
               </div>
             </label>
           </div>
-          <p class="text-xs text-gray-500 mt-2 text-left" dir="ltr">
-            Selected: {{ form.selected_units.length }} unit(s)
-          </p>
+          <p class="text-xs text-gray-500 mt-2">مختار: {{ form.selected_units.length }} وحدة</p>
         </div>
-
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">تاريخ البداية</label>
           <input v-model="form.start_date" type="date" required class="input-field" />
@@ -60,14 +32,12 @@
           <label class="block text-sm font-medium text-gray-700 mb-1">تاريخ النهاية</label>
           <input v-model="form.end_date" type="date" required class="input-field" />
         </div>
-
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">قيمة العقد الإجمالية</label>
-          <input v-model="form.amount" type="number" required class="input-field" placeholder="المبلغ الكلي للوحدات المختارة" />
+          <input v-model="form.amount" type="number" required class="input-field" />
         </div>
-        
         <div v-if="!isEditing">
-          <label class="block text-sm font-medium text-gray-700 mb-1">نظام الدفعات (للفواتير)</label>
+          <label class="block text-sm font-medium text-gray-700 mb-1">نظام الدفعات</label>
           <select v-model="form.frequency" required class="input-field bg-indigo-50">
             <option value="1">دفعة واحدة (سنوي)</option>
             <option value="2">دفعتين (كل 6 أشهر)</option>
@@ -75,14 +45,11 @@
             <option value="12">12 دفعة (شهري)</option>
           </select>
         </div>
-
         <div class="md:col-span-2 mt-4 flex gap-2">
-          <button type="submit" :disabled="loading" class="flex-1 bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 font-bold shadow-md transition-all active:scale-95">
-            {{ loading ? 'جاري المعالجة...' : (isEditing ? 'حفظ التعديلات' : 'توقيع وإصدار الفواتير 🚀') }}
+          <button type="submit" :disabled="loading" class="flex-1 bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 font-bold shadow-md">
+            {{ loading ? 'جاري المعالجة...' : (isEditing ? 'حفظ التعديلات' : 'توقيع العقد 🚀') }}
           </button>
-          <button v-if="isEditing" @click="cancelEdit" type="button" class="bg-gray-200 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-300 font-bold">
-            إلغاء
-          </button>
+          <button v-if="isEditing" @click="cancelEdit" type="button" class="bg-gray-200 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-300 font-bold">إلغاء</button>
         </div>
       </form>
     </div>
@@ -96,45 +63,56 @@
         <thead class="bg-gray-50 text-gray-500 text-xs uppercase font-medium">
           <tr>
             <th class="px-6 py-3 text-right">المستأجر</th>
-            <th class="px-6 py-3 text-right">الوحدات المؤجرة</th>
+            <th class="px-6 py-3 text-right">الوحدات</th>
             <th class="px-6 py-3 text-right">الفترة</th>
-            <th class="px-6 py-3 text-right">القيمة الإجمالية</th>
-            <th class="px-6 py-3 text-right">الحالة</th>
+            <th class="px-6 py-3 text-right">القيمة</th>
             <th class="px-6 py-3 text-center">إجراءات</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-200">
           <tr v-for="c in contracts" :key="c.id" class="hover:bg-indigo-50">
             <td class="px-6 py-4 font-bold text-gray-800">{{ c.tenants?.name }}</td>
-            
             <td class="px-6 py-4 text-sm">
               <div class="flex flex-wrap gap-1">
                 <span v-for="cu in c.contract_units" :key="cu.id" class="bg-indigo-100 text-indigo-700 px-2 py-1 rounded text-xs font-bold border border-indigo-200">
                   🏠 {{ cu.units?.name }}
                 </span>
-                <span v-if="!c.contract_units || c.contract_units.length === 0" class="text-gray-400 text-xs">لا يوجد وحدات</span>
               </div>
             </td>
-
             <td class="px-6 py-4 text-sm text-gray-500 font-mono">{{ c.start_date }} <br> ⬇ <br> {{ c.end_date }}</td>
             <td class="px-6 py-4 text-green-600 font-bold text-lg">{{ Number(c.amount).toLocaleString() }}</td>
-            <td class="px-6 py-4">
-              <span class="px-2 py-1 rounded text-xs bg-green-100 text-green-800 border border-green-200">{{ c.status }}</span>
-            </td>
-            <td class="px-6 py-4 flex justify-center gap-3">
-              <button @click="editContract(c)" class="text-blue-600 hover:bg-blue-100 p-2 rounded-full" title="تعديل">✏️</button>
-              <button @click="deleteContract(c.id)" class="text-red-600 hover:bg-red-100 p-2 rounded-full" title="حذف وإنهاء">🗑️</button>
+            <td class="px-6 py-4 flex justify-center gap-2">
+              
+              <button @click="openContractPDF(c)" class="bg-gray-100 text-gray-600 hover:bg-gray-200 p-2 rounded-full border border-gray-300 transition" title="طباعة العقد">
+                📄
+              </button>
+
+              <button @click="renewContract(c)" class="bg-green-50 text-green-600 hover:bg-green-100 p-2 rounded-full border border-green-200 transition" title="تجديد العقد">
+                🔄
+              </button>
+
+              <button @click="editContract(c)" class="text-blue-600 hover:bg-blue-100 p-2 rounded-full">✏️</button>
+              <button @click="deleteContract(c.id)" class="text-red-600 hover:bg-red-100 p-2 rounded-full">🗑️</button>
             </td>
           </tr>
         </tbody>
       </table>
     </div>
+
+    <ContractPDF 
+      v-if="showContractModal" 
+      :isOpen="showContractModal" 
+      :contract="selectedContract" 
+      @close="showContractModal = false" 
+    />
+
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { createClient } from '@supabase/supabase-js'
+import ContractPDF from '~/components/ContractPDF.vue' // ✅ استيراد مكون الطباعة
 
 const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_KEY)
 const loading = ref(false)
@@ -143,183 +121,143 @@ const units = ref([])
 const contracts = ref([])
 const isEditing = ref(false)
 const editingId = ref(null)
+const originalUnitIds = ref([])
 
-const form = ref({
-  tenant_id: '',
-  selected_units: [], // مصفوفة للوحدات المختارة
-  start_date: '',
-  end_date: '',
-  amount: '',
-  frequency: '1'
-})
+// متغيرات الطباعة الجديدة
+const showContractModal = ref(false)
+const selectedContract = ref(null)
 
-// فلترة الوحدات الشاغرة فقط لتظهر في القائمة
-const availableUnits = computed(() => {
-  if (isEditing.value) return units.value // عند التعديل نعرض الكل
-  return units.value.filter(u => u.status === 'شاغرة')
-})
+const form = ref({ tenant_id: '', selected_units: [], start_date: '', end_date: '', amount: '', frequency: '1' })
+
+const allUnitsForSelection = computed(() => units.value.filter(u => u.status === 'شاغرة' || originalUnitIds.value.includes(u.id)))
 
 const fetchData = async () => {
-  const { data: t } = await supabase.from('tenants').select('id, name')
+  const { data: t } = await supabase.from('tenants').select('id, name, phone, email') // جلبنا الإيميل والجوال للطباعة
   tenants.value = t || []
   
-  const { data: u } = await supabase.from('units').select('id, name, type, price, status')
+  const { data: u } = await supabase.from('units').select('id, name, type, price, status, electricity_meter') // جلبنا العداد للطباعة
   units.value = u || []
   
-  // جلب العقود مع الوحدات المرتبطة بها (علاقة معقدة قليلاً)
-  const { data: c } = await supabase
-    .from('contracts')
-    .select(`
-      *, 
-      tenants (name), 
-      contract_units (
-        id, units (name)
-      )
-    `)
-    .order('created_at', { ascending: false })
+  // جلب العقود مع التفاصيل الكاملة للطباعة
+  const { data: c } = await supabase.from('contracts').select(`
+    *, 
+    tenants (name, phone, email), 
+    contract_units (
+      id, units (id, name, type, electricity_meter)
+    )
+  `).order('created_at', { ascending: false })
   
   contracts.value = c || []
 }
 
-const saveContract = async () => {
-  if (form.value.selected_units.length === 0) {
-    alert('⚠️ يجب اختيار وحدة واحدة على الأقل!')
-    return
-  }
+// ✅ دالة فتح نافذة العقد
+const openContractPDF = (c) => {
+  selectedContract.value = c
+  showContractModal.value = true
+}
 
+const renewContract = async (oldContract) => {
+  if (!confirm(`هل تريد تجديد العقد للمستأجر "${oldContract.tenants?.name}" لسنة إضافية؟`)) return
   loading.value = true
-  
-  if (isEditing.value) {
-    // تعديل البيانات المالية والوقت فقط
-    const { error } = await supabase.from('contracts').update({
-      start_date: form.value.start_date,
-      end_date: form.value.end_date,
-      amount: form.value.amount
-    }).eq('id', editingId.value)
-    
-    if (error) alert(error.message)
-    else { cancelEdit(); fetchData(); }
-    loading.value = false
-    return
-  }
-
-  // --- عملية إنشاء عقد جديد ---
   try {
-    // 1. إنشاء العقد الرئيسي
-    // نستخدم الوحدة الأولى كـ "وحدة رئيسية" للمرجع فقط، لكن الاعتماد الكلي على جدول contract_units
-    const primaryUnitId = form.value.selected_units[0] 
+    const oldEnd = new Date(oldContract.end_date)
+    const newStart = new Date(oldEnd)
+    newStart.setDate(newStart.getDate() + 1)
+    const newEnd = new Date(newStart)
+    newEnd.setFullYear(newEnd.getFullYear() + 1)
+    newEnd.setDate(newEnd.getDate() - 1)
 
-    const { data: contractData, error: contractError } = await supabase
-      .from('contracts')
-      .insert([{
-        tenant_id: form.value.tenant_id,
-        unit_id: primaryUnitId, // للتوافق مع النظام القديم
-        start_date: form.value.start_date,
-        end_date: form.value.end_date,
-        amount: form.value.amount
-      }])
-      .select().single()
+    const { data: newContract, error: cErr } = await supabase.from('contracts').insert([{
+      tenant_id: oldContract.tenant_id,
+      start_date: newStart.toISOString().split('T')[0],
+      end_date: newEnd.toISOString().split('T')[0],
+      amount: oldContract.amount,
+      status: 'ساري'
+    }]).select().single()
+    if (cErr) throw cErr
 
-    if (contractError) throw contractError
-
-    const contractId = contractData.id
-
-    // 2. ربط الوحدات بالعقد في الجدول الجديد
-    const contractUnitsInserts = form.value.selected_units.map(uid => ({
-      contract_id: contractId,
-      unit_id: uid
-    }))
-    const { error: linkError } = await supabase.from('contract_units').insert(contractUnitsInserts)
-    if (linkError) throw linkError
-
-    // 3. تحديث حالة جميع الوحدات المختارة إلى "مؤجرة"
-    const { error: unitUpdateError } = await supabase
-      .from('units')
-      .update({ status: 'مؤجرة' })
-      .in('id', form.value.selected_units)
-    if (unitUpdateError) throw unitUpdateError
-
-    // 4. توليد الفواتير (فاتورة واحدة مجمعة)
-    const totalAmount = Number(form.value.amount)
-    const parts = Number(form.value.frequency)
-    const amountPerInvoice = totalAmount / parts
-    let currentDate = new Date(form.value.start_date)
-    const invoices = []
-
-    for (let i = 0; i < parts; i++) {
-      invoices.push({
-        contract_id: contractId,
-        tenant_id: form.value.tenant_id,
-        unit_id: primaryUnitId, // نربط الفاتورة بالوحدة الرئيسية
-        due_date: currentDate.toISOString().split('T')[0],
-        amount: amountPerInvoice,
-        status: 'غير مدفوع'
-      })
-      currentDate.setMonth(currentDate.getMonth() + (12 / parts))
+    // نسخ الوحدات
+    // ملاحظة: تأكدنا في fetchData من جلب contract_units بشكل صحيح
+    if (oldContract.contract_units && oldContract.contract_units.length > 0) {
+      const links = oldContract.contract_units.map(cu => ({ 
+        contract_id: newContract.id, 
+        unit_id: cu.units.id 
+      }))
+      await supabase.from('contract_units').insert(links)
     }
 
-    const { error: invoiceError } = await supabase.from('invoices').insert(invoices)
-    if (invoiceError) throw invoiceError
+    const parts = 2 
+    const perInv = Number(oldContract.amount) / parts
+    let d = new Date(newStart)
+    const invs = []
+    for (let i = 0; i < parts; i++) {
+      invs.push({
+        contract_id: newContract.id,
+        tenant_id: oldContract.tenant_id,
+        due_date: d.toISOString().split('T')[0],
+        amount: perInv,
+        status: 'غير مدفوع'
+      })
+      d.setMonth(d.getMonth() + (12 / parts))
+    }
+    await supabase.from('invoices').insert(invs)
 
-    alert(`✅ تم توقيع العقد لـ ${form.value.selected_units.length} وحدات بنجاح!`)
-    cancelEdit()
+    alert('✅ تم تجديد العقد بنجاح!')
     fetchData()
-
   } catch (e) {
-    alert('حدث خطأ: ' + e.message)
+    alert('خطأ: ' + e.message)
   } finally {
     loading.value = false
   }
 }
 
-const editContract = (c) => {
-  // استخراج معرفات الوحدات لهذا العقد
-  const unitIds = c.contract_units ? c.contract_units.map(cu => cu.units?.id) : [] // تصحيح الوصول للـ ID
-
-  form.value = { 
-    ...c,
-    selected_units: unitIds // تعبئة الوحدات المختارة
-  }
-  isEditing.value = true
-  editingId.value = c.id
-  window.scrollTo({ top: 0, behavior: 'smooth' })
-}
-
-const cancelEdit = () => {
-  form.value = { tenant_id: '', selected_units: [], start_date: '', end_date: '', amount: '', frequency: '1' }
-  isEditing.value = false
-  editingId.value = null
-}
-
-const deleteContract = async (id) => {
-  if (!confirm('⚠️ هل أنت متأكد من حذف العقد؟\nسيتم حذف الفواتير وإعادة جميع الوحدات المرتبطة به إلى "شاغرة".')) return
-  
+const saveContract = async () => {
+  if (form.value.selected_units.length === 0) { alert('يجب اختيار وحدة!'); return }
   loading.value = true
-  
-  // 1. يجب أن نعرف الوحدات المرتبطة لإعادتها شاغرة قبل حذف العقد
-  const { data: linkedUnits } = await supabase.from('contract_units').select('unit_id').eq('contract_id', id)
-  const unitIdsToFree = linkedUnits.map(x => x.unit_id)
-
-  // 2. حذف الفواتير
-  await supabase.from('invoices').delete().eq('contract_id', id)
-  
-  // 3. حذف العقد (سيحذف contract_units تلقائياً بسبب cascade)
-  const { error } = await supabase.from('contracts').delete().eq('id', id)
-  
-  if (!error && unitIdsToFree.length > 0) {
-    // 4. تحرير الوحدات
-    await supabase.from('units').update({ status: 'شاغرة' }).in('id', unitIdsToFree)
-  }
-  
-  fetchData()
-  loading.value = false
+  try {
+    if (isEditing.value) {
+      await supabase.from('contracts').update({ tenant_id: form.value.tenant_id, start_date: form.value.start_date, end_date: form.value.end_date, amount: form.value.amount }).eq('id', editingId.value)
+      if (originalUnitIds.value.length > 0) await supabase.from('units').update({ status: 'شاغرة' }).in('id', originalUnitIds.value)
+      await supabase.from('contract_units').delete().eq('contract_id', editingId.value)
+      const newLinks = form.value.selected_units.map(uid => ({ contract_id: editingId.value, unit_id: uid }))
+      await supabase.from('contract_units').insert(newLinks)
+      await supabase.from('units').update({ status: 'مؤجرة' }).in('id', form.value.selected_units)
+      alert('تم التحديث!')
+    } else {
+      const { data: contract, error: cErr } = await supabase.from('contracts').insert([{ tenant_id: form.value.tenant_id, start_date: form.value.start_date, end_date: form.value.end_date, amount: form.value.amount }]).select().single()
+      if (cErr) throw cErr
+      const links = form.value.selected_units.map(uid => ({ contract_id: contract.id, unit_id: uid }))
+      await supabase.from('contract_units').insert(links)
+      await supabase.from('units').update({ status: 'مؤجرة' }).in('id', form.value.selected_units)
+      
+      const totalAmount = Number(form.value.amount); const parts = Number(form.value.frequency); const perInv = totalAmount / parts; let d = new Date(form.value.start_date); const invs = []
+      for (let i = 0; i < parts; i++) { invs.push({ contract_id: contract.id, tenant_id: form.value.tenant_id, due_date: d.toISOString().split('T')[0], amount: perInv, status: 'غير مدفوع' }); d.setMonth(d.getMonth() + (12 / parts)) }
+      await supabase.from('invoices').insert(invs)
+      alert('تم التوقيع!')
+    }
+    cancelEdit(); fetchData()
+  } catch (e) { alert(e.message) } finally { loading.value = false }
 }
 
+const editContract = (c) => {
+  const currentUnits = c.contract_units ? c.contract_units.map(cu => cu.units?.id) : []
+  originalUnitIds.value = currentUnits
+  form.value = { ...c, selected_units: currentUnits }
+  isEditing.value = true; editingId.value = c.id; window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+const cancelEdit = () => { form.value = { tenant_id: '', selected_units: [], start_date: '', end_date: '', amount: '', frequency: '1' }; isEditing.value = false; editingId.value = null; originalUnitIds.value = [] }
+const deleteContract = async (id) => {
+  if (!confirm('حذف العقد؟')) return
+  const { data: links } = await supabase.from('contract_units').select('unit_id').eq('contract_id', id)
+  const ids = links.map(x => x.unit_id)
+  if (ids.length) await supabase.from('units').update({ status: 'شاغرة' }).in('id', ids)
+  await supabase.from('invoices').delete().eq('contract_id', id)
+  await supabase.from('contracts').delete().eq('id', id)
+  fetchData()
+}
 onMounted(() => fetchData())
 </script>
 
 <style scoped>
-.input-field {
-  @apply w-full rounded-lg border-gray-300 border p-2 focus:ring-2 focus:ring-indigo-500 outline-none bg-white h-[45px];
-}
+.input-field { @apply w-full rounded-lg border-gray-300 border p-2 focus:ring-2 focus:ring-indigo-500 outline-none bg-white h-[45px]; }
 </style>

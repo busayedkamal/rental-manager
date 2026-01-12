@@ -76,6 +76,11 @@
             💬 واتساب
           </a>
         </div>
+
+        <div class="mt-6">
+          <DocumentsManager :tenantId="tenant.id" />
+        </div>
+
       </div>
 
       <div class="lg:col-span-2 bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
@@ -130,6 +135,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { createClient } from '@supabase/supabase-js'
+import DocumentsManager from '~/components/DocumentsManager.vue' // ✅ الاستيراد صحيح
 
 const route = useRoute()
 const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_KEY)
@@ -149,8 +155,6 @@ const totals = computed(() => {
 })
 
 // الرصيد: (المدفوع - المطلوب).
-// موجب = له رصيد إضافي.
-// سالب = عليه ديون.
 const walletBalance = computed(() => totals.value.paid - totals.value.required)
 
 const loadData = async () => {
@@ -163,7 +167,7 @@ const loadData = async () => {
   // 2. العقد النشط (مع بيانات الوحدة والعدادات)
   const { data: c } = await supabase
     .from('contracts')
-    .select('*, units(*)') // جلبنا كل بيانات الوحدة بما فيها العدادات
+    .select('*, units(*)') 
     .eq('tenant_id', id)
     .order('created_at', { ascending: false })
     .limit(1)

@@ -59,17 +59,19 @@
           <tbody class="divide-y divide-gray-200">
             <tr v-for="tenant in tenants" :key="tenant.id" class="hover:bg-indigo-50 transition-colors">
               
-              <td class="px-6 py-4">
-  <NuxtLink :to="`/tenants/${tenant.id}`" class="group block cursor-pointer">
-    <div class="font-bold text-gray-800 text-base group-hover:text-indigo-600 transition-colors flex items-center gap-2">
-      {{ tenant.name }}
-      <span class="text-xs text-gray-400 group-hover:text-indigo-400 opacity-0 group-hover:opacity-100">↗ عرض التفاصيل</span>
-    </div>
-    <div v-if="tenant.contact_person" class="text-xs text-gray-500 mt-1 flex items-center gap-1">
-      <span class="bg-gray-100 px-1 rounded">مسؤول:</span> {{ tenant.contact_person }}
-    </div>
-  </NuxtLink>
-</td>
+              <td class="p-0 relative group cursor-pointer">
+                <NuxtLink :to="`/tenants/${tenant.id}`" class="block px-6 py-4 w-full h-full text-inherit no-underline">
+                  <div class="font-bold text-gray-800 text-base group-hover:text-indigo-600 transition-colors flex items-center gap-2">
+                    {{ tenant.name }}
+                    <span class="text-[10px] bg-indigo-50 text-indigo-500 px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                      ↗ التفاصيل
+                    </span>
+                  </div>
+                  <div v-if="tenant.contact_person" class="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                    <span class="bg-gray-100 px-1 rounded">مسؤول:</span> {{ tenant.contact_person }}
+                  </div>
+                </NuxtLink>
+              </td>
 
               <td class="px-6 py-4 text-gray-600 text-right" dir="ltr">{{ tenant.phone }}</td>
               
@@ -99,7 +101,6 @@ import { createClient } from '@supabase/supabase-js'
 const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_KEY)
 const loading = ref(false)
 const tenants = ref([])
-// تمت إضافة contact_person للنموذج
 const form = ref({ name: '', phone: '', email: '', contact_person: '' })
 const isEditing = ref(false)
 const editingId = ref(null)
@@ -130,7 +131,6 @@ const saveTenant = async () => {
 }
 
 const editTenant = (tenant) => {
-  // تعبئة البيانات بما فيها المسؤول عند التعديل
   form.value = { 
     name: tenant.name, 
     phone: tenant.phone, 

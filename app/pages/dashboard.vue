@@ -4,9 +4,11 @@
     <div class="flex justify-between items-end">
       <div>
         <h1 class="text-3xl font-bold text-gray-800">📊 لوحة المعلومات</h1>
-        <p class="text-gray-500 mt-1">نظرة عامة على أداء عقاراتك</p>
+        <p class="text-gray-500 mt-1">نظرة عامة على الأداء المالي والتشغيلي</p>
       </div>
-      <button @click="loadStats" class="text-indigo-600 hover:underline text-sm font-bold">🔄 تحديث البيانات</button>
+      <button @click="loadStats" class="text-indigo-600 hover:underline text-sm font-bold flex items-center gap-1">
+        <span>🔄</span> تحديث البيانات
+      </button>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -41,12 +43,19 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
       
       <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-        <div class="p-4 border-b bg-gray-50 font-bold text-gray-700">💰 آخر عمليات الدفع</div>
+        <div class="p-4 border-b bg-gray-50 font-bold text-gray-700 flex items-center gap-2">
+          <span>💰</span> آخر عمليات الدفع المستلمة
+        </div>
         <table class="min-w-full text-sm">
           <tbody class="divide-y divide-gray-100">
-            <tr v-for="inv in recentPaid" :key="inv.id" class="hover:bg-gray-50">
-              <td class="p-4 text-gray-600">{{ inv.tenants?.name }}</td>
-              <td class="p-4 text-gray-500">{{ inv.units?.name }}</td>
+            <tr v-for="inv in recentPaid" :key="inv.id" class="hover:bg-green-50/50 transition-colors">
+              <td class="p-4">
+                <div class="font-bold text-gray-700">{{ inv.tenants?.name }}</div>
+                <div class="text-xs text-gray-400">{{ inv.units?.name }}</div>
+              </td>
+              <td class="p-4 text-gray-500 text-left" dir="ltr">
+                <span class="text-xs bg-gray-100 px-2 py-1 rounded">{{ new Date(inv.payment_date || inv.updated_at).toLocaleDateString('en-CA') }}</span>
+              </td>
               <td class="p-4 font-bold text-green-600 text-left" dir="ltr">+ {{ formatMoney(inv.amount) }}</td>
             </tr>
             <tr v-if="recentPaid.length === 0">
@@ -57,18 +66,46 @@
       </div>
 
       <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-        <div class="p-4 border-b bg-gray-50 font-bold text-gray-700 flex justify-between">
-          <span>🔑 وحدات شاغرة (للتأجير فوراً)</span>
-          <span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">{{ vacantUnits.length }} وحدة</span>
-        </div>
-        <div class="p-4">
-          <div v-if="vacantUnits.length > 0" class="flex flex-wrap gap-2">
-            <span v-for="u in vacantUnits" :key="u.id" class="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg border border-gray-200 text-sm font-medium">
-              {{ u.name }} ({{ u.type }})
-            </span>
+        <div class="p-4 border-b bg-gray-50 font-bold text-gray-700 flex justify-between items-center">
+          <div class="flex items-center gap-2">
+            <span>⚠️</span> متابعة التحصيل (الأكثر استحقاقاً)
           </div>
-          <p v-else class="text-center text-gray-400 py-4">ما شاء الله! العقار ممتلئ بالكامل 👏</p>
+          <span class="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-bold">{{ unpaidInvoices.length }} فاتورة</span>
         </div>
+        
+        <table class="min-w-full text-sm">
+          <thead class="bg-gray-50 text-gray-500 font-normal">
+            <tr>
+              <th class="p-3 text-right font-normal">المستأجر</th>
+              <th class="p-3 text-right font-normal">تاريخ الاستحقاق</th>
+              <th class="p-3 text-left font-normal">المبلغ</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            <tr v-for="inv in unpaidInvoices" :key="inv.id" class="hover:bg-gray-50 transition-colors">
+              <td class="p-4">
+                <div class="font-bold text-gray-800">{{ inv.tenants?.name }}</div>
+                <div class="text-xs text-gray-500">{{ inv.units?.name }}</div>
+              </td>
+              <td class="p-4">
+                <div class="flex items-center gap-2">
+                  <span class="font-mono text-gray-700">{{ inv.due_date }}</span>
+                  <span v-if="isOverdue(inv.due_date)" class="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold">متأخر</span>
+                  <span v-else class="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold">قريباً</span>
+                </div>
+              </td>
+              <td class="p-4 font-bold text-gray-700 text-left" dir="ltr">
+                {{ formatMoney(inv.amount - (inv.paid_amount || 0)) }}
+              </td>
+            </tr>
+            <tr v-if="unpaidInvoices.length === 0">
+              <td colspan="3" class="p-8 text-center flex flex-col items-center">
+                <span class="text-4xl mb-2">🎉</span>
+                <span class="text-gray-500">ممتاز! لا توجد ديون أو مستحقات قريبة.</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
     </div>
@@ -91,9 +128,14 @@ const stats = ref({
 })
 
 const recentPaid = ref([])
-const vacantUnits = ref([])
+const unpaidInvoices = ref([]) // القائمة الجديدة للمتأخرين والقريبين
 
 const formatMoney = (val) => Number(val).toLocaleString() + ' SAR'
+
+// دالة للتحقق من التأخير
+const isOverdue = (dateString) => {
+  return new Date(dateString) < new Date(new Date().setHours(0, 0, 0, 0))
+}
 
 const loadStats = async () => {
   // 1. جلب الوحدات لحساب الإشغال
@@ -102,20 +144,35 @@ const loadStats = async () => {
     stats.value.totalUnits = units.length
     stats.value.occupiedUnits = units.filter(u => u.status === 'مؤجرة').length
     stats.value.occupancyRate = units.length ? Math.round((stats.value.occupiedUnits / units.length) * 100) : 0
-    vacantUnits.value = units.filter(u => u.status === 'شاغرة')
   }
 
-  // 2. جلب الفواتير لحساب الماليات
-  const { data: invoices } = await supabase.from('invoices').select('amount, status, created_at, tenants(name), units(name)')
+  // 2. جلب الفواتير لحساب الماليات والجداول
+  // نحتاج جلب due_date و paid_amount و payment_date بدقة
+  const { data: invoices } = await supabase
+    .from('invoices')
+    .select('id, amount, paid_amount, status, due_date, payment_date, created_at, updated_at, tenants(name), units(name)')
+  
   if (invoices) {
-    stats.value.collected = invoices.filter(i => i.status === 'مدفوع').reduce((sum, i) => sum + i.amount, 0)
-    stats.value.pending = invoices.filter(i => i.status !== 'مدفوع').reduce((sum, i) => sum + i.amount, 0)
+    // حساب المجاميع
+    stats.value.collected = invoices.filter(i => ['مدفوع', 'مدفوع جزئياً'].includes(i.status)).reduce((sum, i) => sum + (i.paid_amount || 0), 0)
     
-    // آخر 5 مدفوعات
+    // المتبقي = (المبلغ الكلي - المدفوع) للفواتير غير المدفوعة بالكامل
+    stats.value.pending = invoices.reduce((sum, i) => {
+      if (i.status === 'مدفوع') return sum
+      return sum + (i.amount - (i.paid_amount || 0))
+    }, 0)
+    
+    // --- الجدول الأيمن: آخر عمليات الدفع ---
     recentPaid.value = invoices
-      .filter(i => i.status === 'مدفوع')
-      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at)) // الأحدث أولاً
+      .filter(i => i.paid_amount > 0) // أي فاتورة تم دفع شيء فيها
+      .sort((a, b) => new Date(b.payment_date || b.updated_at) - new Date(a.payment_date || a.updated_at)) // الأحدث دفعاً
       .slice(0, 5)
+
+    // --- الجدول الأيسر (الجديد): متابعة التحصيل ---
+    unpaidInvoices.value = invoices
+      .filter(i => i.status !== 'مدفوع') // نأخذ غير المدفوع أو المدفوع جزئياً
+      .sort((a, b) => new Date(a.due_date) - new Date(b.due_date)) // نرتب حسب الأقدم تاريخاً (الأكثر استعجالاً)
+      .slice(0, 6) // نعرض أهم 6 فواتير فقط لعدم زحمة الشاشة
   }
 
   // 3. عدد المستأجرين

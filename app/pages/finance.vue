@@ -4,7 +4,7 @@
     <div class="flex justify-between items-center">
       <div>
         <h1 class="text-2xl font-bold text-gray-800">💰 سجل المدفوعات والتحصيل</h1>
-        <p class="text-gray-500 text-sm mt-1">إدارة الدفعات الكاملة والجزئة</p>
+        <p class="text-gray-500 text-sm mt-1">تتبع التدفقات المالية وتفاصيل السداد</p>
       </div>
       <button @click="fetchInvoices" class="flex items-center gap-2 text-indigo-600 hover:bg-indigo-50 px-3 py-2 rounded-lg transition font-bold">
         <span>🔄</span> تحديث البيانات
@@ -13,17 +13,54 @@
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
       <div class="bg-white p-5 rounded-xl shadow-sm border-r-4 border-indigo-500">
-        <div class="text-gray-500 text-sm font-medium">عدد الفواتير</div>
+        <div class="text-gray-500 text-sm font-medium">عدد الفواتير الكلي</div>
         <div class="text-3xl font-bold text-gray-800 mt-1">{{ invoices.length }}</div>
       </div>
       <div class="bg-white p-5 rounded-xl shadow-sm border-r-4 border-red-500">
-        <div class="text-gray-500 text-sm font-medium">مستحقات (المتبقي)</div>
+        <div class="text-gray-500 text-sm font-medium">مستحقات (غير محصلة)</div>
         <div class="text-3xl font-bold text-red-600 mt-1">{{ totalUnpaid.toLocaleString() }} <span class="text-sm">ريال</span></div>
       </div>
       <div class="bg-white p-5 rounded-xl shadow-sm border-r-4 border-green-500">
-        <div class="text-gray-500 text-sm font-medium">تم تحصيله</div>
+        <div class="text-gray-500 text-sm font-medium">الإيرادات المحصلة</div>
         <div class="text-3xl font-bold text-green-600 mt-1">{{ totalPaid.toLocaleString() }} <span class="text-sm">ريال</span></div>
       </div>
+    </div>
+
+    <div class="flex gap-2 overflow-x-auto pb-2">
+      <button 
+        @click="currentFilter = 'all'" 
+        class="px-4 py-2 rounded-full text-sm font-bold transition-all border"
+        :class="currentFilter === 'all' ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'"
+      >
+        📋 الكل
+      </button>
+      
+      <button 
+        @click="currentFilter = 'overdue'" 
+        class="px-4 py-2 rounded-full text-sm font-bold transition-all border flex items-center gap-1"
+        :class="currentFilter === 'overdue' ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-red-50'"
+      >
+        ⚠️ متأخرات
+        <span v-if="counts.overdue > 0" class="bg-white/20 text-xs px-1.5 py-0.5 rounded-full ml-1">{{ counts.overdue }}</span>
+      </button>
+
+      <button 
+        @click="currentFilter = 'pending'" 
+        class="px-4 py-2 rounded-full text-sm font-bold transition-all border flex items-center gap-1"
+        :class="currentFilter === 'pending' ? 'bg-orange-500 text-white border-orange-500' : 'bg-white text-gray-600 border-gray-200 hover:bg-orange-50'"
+      >
+        ⏳ مستحق قريباً
+        <span v-if="counts.pending > 0" class="bg-white/20 text-xs px-1.5 py-0.5 rounded-full ml-1">{{ counts.pending }}</span>
+      </button>
+
+      <button 
+        @click="currentFilter = 'paid'" 
+        class="px-4 py-2 rounded-full text-sm font-bold transition-all border flex items-center gap-1"
+        :class="currentFilter === 'paid' ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-green-50'"
+      >
+        ✅ مدفوع
+        <span v-if="counts.paid > 0" class="bg-white/20 text-xs px-1.5 py-0.5 rounded-full ml-1">{{ counts.paid }}</span>
+      </button>
     </div>
 
     <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
@@ -39,7 +76,7 @@
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-200">
-          <tr v-for="inv in invoices" :key="inv.id" class="hover:bg-gray-50 transition-colors">
+          <tr v-for="inv in filteredInvoices" :key="inv.id" class="hover:bg-gray-50 transition-colors">
             
             <td class="px-6 py-4">
               <div class="font-bold text-gray-800">{{ inv.tenants?.name }}</div>
@@ -94,38 +131,30 @@
               </div>
             </td>
           </tr>
+          <tr v-if="filteredInvoices.length === 0">
+            <td colspan="6" class="p-8 text-center text-gray-400">
+              لا توجد فواتير في هذه القائمة حالياً.
+            </td>
+          </tr>
         </tbody>
       </table>
     </div>
 
     <div v-if="showPaymentModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-50 p-4" dir="rtl">
       <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden transform transition-all scale-100">
-        
         <div class="bg-indigo-600 p-4 flex justify-between items-center text-white">
           <h3 class="text-lg font-bold">💵 تسجيل دفعة مالية</h3>
           <button @click="showPaymentModal = false" class="hover:bg-indigo-700 p-1 rounded-full">✕</button>
         </div>
-
         <div class="p-6 space-y-4">
-          
           <div class="bg-gray-50 p-3 rounded-lg border text-center text-sm text-gray-600">
             المبلغ المتبقي على المستأجر: <span class="font-bold text-red-600 text-lg block">{{ Number(paymentForm.remaining).toLocaleString() }} ريال</span>
           </div>
-
           <form @submit.prevent="confirmPayment" class="space-y-4">
-            
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">المبلغ المستلم الآن</label>
-              <input 
-                v-model="paymentForm.amountToPay" 
-                type="number" 
-                step="0.01"
-                class="w-full p-3 text-xl font-bold text-center text-indigo-700 border rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" 
-                placeholder="0.00"
-                required 
-              />
+              <input v-model="paymentForm.amountToPay" type="number" step="0.01" class="w-full p-3 text-xl font-bold text-center text-indigo-700 border rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" required />
             </div>
-
             <div class="grid grid-cols-2 gap-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">تاريخ السداد</label>
@@ -140,7 +169,6 @@
                 </select>
               </div>
             </div>
-
             <button type="submit" :disabled="processing" class="w-full bg-green-600 text-white py-3 rounded-xl hover:bg-green-700 font-bold shadow-lg transition mt-2">
               {{ processing ? 'جاري الحفظ...' : 'تأكيد وحفظ' }}
             </button>
@@ -185,102 +213,88 @@ const invoices = ref([])
 const processing = ref(false)
 const showPaymentModal = ref(false)
 const showEditModal = ref(false)
+const currentFilter = ref('all') // الفلتر الافتراضي
 
-// المتغيرات للنافذة المنبثقة
-const paymentForm = ref({ 
-  id: null, 
-  currentPaid: 0, 
-  totalDue: 0, 
-  remaining: 0,
-  amountToPay: 0, 
-  payment_date: '', 
-  payment_method: 'تحويل بنكي' 
-})
+const paymentForm = ref({ id: null, currentPaid: 0, totalDue: 0, remaining: 0, amountToPay: 0, payment_date: '', payment_method: 'تحويل بنكي' })
 const editForm = ref({})
 
-// الحسابات
+// الحسابات العامة
 const totalUnpaid = computed(() => invoices.value.reduce((sum, i) => sum + (i.amount - (i.paid_amount || 0)), 0))
 const totalPaid = computed(() => invoices.value.reduce((sum, i) => sum + (i.paid_amount || 0), 0))
+
+// دالة مساعدة للتحقق من التأخير
+const checkOverdue = (inv) => {
+  if (['مدفوع'].includes(inv.status)) return false
+  // نعتبره متأخراً إذا كان التاريخ قبل اليوم
+  return new Date(inv.due_date) < new Date(new Date().setHours(0,0,0,0))
+}
+
+const isOverdue = (inv) => checkOverdue(inv)
+
+// 🟢 القائمة المفلترة (قلب النظام الجديد)
+const filteredInvoices = computed(() => {
+  if (currentFilter.value === 'all') return invoices.value
+  
+  if (currentFilter.value === 'paid') {
+    return invoices.value.filter(i => i.status === 'مدفوع')
+  }
+  
+  if (currentFilter.value === 'overdue') {
+    // المتأخر: غير مدفوع + تاريخه طاف
+    return invoices.value.filter(i => i.status !== 'مدفوع' && checkOverdue(i))
+  }
+  
+  if (currentFilter.value === 'pending') {
+    // المستحق قريباً: غير مدفوع + تاريخه لم يطف بعد (اليوم أو مستقبلاً)
+    return invoices.value.filter(i => i.status !== 'مدفوع' && !checkOverdue(i))
+  }
+  
+  return invoices.value
+})
+
+// 🔢 عدادات التبويبات (لتظهر كأرقام صغيرة بجانب الزر)
+const counts = computed(() => {
+  return {
+    paid: invoices.value.filter(i => i.status === 'مدفوع').length,
+    overdue: invoices.value.filter(i => i.status !== 'مدفوع' && checkOverdue(i)).length,
+    pending: invoices.value.filter(i => i.status !== 'مدفوع' && !checkOverdue(i)).length
+  }
+})
 
 const fetchInvoices = async () => {
   const { data } = await supabase.from('invoices').select(`*, tenants(name), units(name)`).order('due_date', { ascending: true })
   invoices.value = data || []
 }
 
-const isOverdue = (inv) => {
-  if (inv.status === 'مدفوع') return false
-  return new Date(inv.due_date) < new Date()
-}
-
-// 1. فتح نافذة الدفع (مع حساب المتبقي)
+// نوافذ الدفع والتعديل (كما هي)
 const openPaymentModal = (inv) => {
   const paid = Number(inv.paid_amount || 0)
   const total = Number(inv.amount)
   const remaining = total - paid
-
-  paymentForm.value = {
-    id: inv.id,
-    currentPaid: paid,
-    totalDue: total,
-    remaining: remaining,
-    amountToPay: remaining, // افتراضياً نضع المبلغ المتبقي كاملاً
-    payment_date: new Date().toISOString().split('T')[0],
-    payment_method: 'تحويل بنكي'
-  }
+  paymentForm.value = { id: inv.id, currentPaid: paid, totalDue: total, remaining: remaining, amountToPay: remaining, payment_date: new Date().toISOString().split('T')[0], payment_method: 'تحويل بنكي' }
   showPaymentModal.value = true
 }
 
-// 2. تأكيد الدفع (تراكمي)
 const confirmPayment = async () => {
   processing.value = true
-  
-  // المبلغ الجديد المدفوع = (ما دفع سابقاً) + (الدفعة الحالية)
   const newTotalPaid = Number(paymentForm.value.currentPaid) + Number(paymentForm.value.amountToPay)
-  
-  // تحديد الحالة
   let newStatus = 'مدفوع'
-  if (newTotalPaid < Number(paymentForm.value.totalDue)) {
-    newStatus = 'مدفوع جزئياً'
-  }
-
-  const { error } = await supabase.from('invoices').update({
-    status: newStatus,
-    paid_amount: newTotalPaid,
-    payment_date: paymentForm.value.payment_date,
-    payment_method: paymentForm.value.payment_method
-  }).eq('id', paymentForm.value.id)
-
-  if (error) {
-    alert(error.message)
-  } else {
-    showPaymentModal.value = false
-    fetchInvoices()
-  }
+  if (newTotalPaid < Number(paymentForm.value.totalDue)) newStatus = 'مدفوع جزئياً'
+  const { error } = await supabase.from('invoices').update({ status: newStatus, paid_amount: newTotalPaid, payment_date: paymentForm.value.payment_date, payment_method: paymentForm.value.payment_method }).eq('id', paymentForm.value.id)
+  if (error) alert(error.message)
+  else { showPaymentModal.value = false; fetchInvoices() }
   processing.value = false
 }
 
-// التعديل والحذف
 const openEditModal = (inv) => { editForm.value = { ...inv }; showEditModal.value = true }
-
 const saveInvoiceEdit = async () => {
-  // تحديد الحالة تلقائياً بناءً على القيم المعدلة
   let status = 'غير مدفوع'
   if (editForm.value.paid_amount >= editForm.value.amount) status = 'مدفوع'
   else if (editForm.value.paid_amount > 0) status = 'مدفوع جزئياً'
-  
-  const { error } = await supabase.from('invoices').update({
-    ...editForm.value,
-    status: status
-  }).eq('id', editForm.value.id)
-  
+  const { error } = await supabase.from('invoices').update({ ...editForm.value, status: status }).eq('id', editForm.value.id)
   if (!error) { showEditModal.value = false; fetchInvoices() }
 }
-
-const deleteInvoice = async (id) => {
-  if (!confirm('حذف السجل؟')) return
-  await supabase.from('invoices').delete().eq('id', id)
-  fetchInvoices()
-}
+const deleteInvoice = async (id) => { if (!confirm('حذف السجل؟')) return; await supabase.from('invoices').delete().eq('id', id); fetchInvoices() }
 
 onMounted(() => fetchInvoices())
 </script>

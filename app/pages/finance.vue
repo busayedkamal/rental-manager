@@ -148,8 +148,7 @@
         </div>
         <div class="p-6 space-y-4">
           <div class="bg-gray-50 p-3 rounded-lg border text-center text-sm text-gray-600">
-            المبلغ المتبقي على المستأجر: <span class="font-bold text-red-600 text-lg block">{{ Number(paymentForm.remaining).toLocaleString() }} ريال</span>
-          </div>
+          <span class="font-bold text-red-600 text-lg block">{{ Math.trunc(paymentForm.remaining).toLocaleString() }} ريال</span>          </div>
           <form @submit.prevent="confirmPayment" class="space-y-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">المبلغ المستلم الآن</label>
@@ -266,12 +265,23 @@ const fetchInvoices = async () => {
   invoices.value = data || []
 }
 
-// نوافذ الدفع والتعديل (كما هي)
+// 1. فتح نافذة الدفع (مع إزالة الفواصل العشرية)
 const openPaymentModal = (inv) => {
   const paid = Number(inv.paid_amount || 0)
   const total = Number(inv.amount)
-  const remaining = total - paid
-  paymentForm.value = { id: inv.id, currentPaid: paid, totalDue: total, remaining: remaining, amountToPay: remaining, payment_date: new Date().toISOString().split('T')[0], payment_method: 'تحويل بنكي' }
+  
+  // Math.trunc تقوم بحذف الفواصل تماماً دون تقريب الرقم
+  const remaining = Math.trunc(total - paid)
+
+  paymentForm.value = {
+    id: inv.id,
+    currentPaid: paid,
+    totalDue: total,
+    remaining: remaining,
+    amountToPay: remaining, // نضع المبلغ المتبقي (الصحيح) كقيمة افتراضية
+    payment_date: new Date().toISOString().split('T')[0],
+    payment_method: 'تحويل بنكي'
+  }
   showPaymentModal.value = true
 }
 

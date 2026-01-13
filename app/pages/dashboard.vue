@@ -27,7 +27,7 @@
       </div>
 
       <div class="bg-white p-6 rounded-xl shadow-sm border-r-4 border-red-500">
-        <div class="text-gray-500 text-sm mb-1">ديون مستحقة (لم تدفع)</div>
+        <div class="text-gray-500 text-sm mb-1">ديون مستحقة (حالياً)</div>
         <div class="text-2xl font-bold text-red-600">{{ formatMoney(stats.pending) }}</div>
       </div>
 
@@ -64,7 +64,7 @@
               <td class="p-4 text-gray-500 text-left" dir="ltr">
                 <span class="text-xs bg-gray-100 px-2 py-1 rounded">{{ new Date(inv.payment_date || inv.updated_at).toLocaleDateString('en-CA') }}</span>
               </td>
-              <td class="p-4 font-bold text-green-600 text-left" dir="ltr">+ {{ formatMoney(inv.amount) }}</td>
+              <td class="p-4 font-bold text-green-600 text-left" dir="ltr">+ {{ formatMoney(inv.paid_amount || inv.amount) }}</td>
             </tr>
             <tr v-if="recentPaid.length === 0">
               <td colspan="3" class="p-6 text-center text-gray-400">لا توجد عمليات دفع حديثة</td>
@@ -126,12 +126,11 @@ import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_KEY)
 
-// تحديث الكائن ليشمل المصروفات وصافي الربح
 const stats = ref({
   collected: 0,
   pending: 0,
-  expenses: 0,   // جديد
-  netProfit: 0,  // جديد
+  expenses: 0,
+  netProfit: 0,
   totalUnits: 0,
   occupiedUnits: 0,
   occupancyRate: 0,
@@ -143,58 +142,79 @@ const unpaidInvoices = ref([])
 
 const formatMoney = (val) => Number(val).toLocaleString() + ' SAR'
 
-// دالة للتحقق من التأخير
 const isOverdue = (dateString) => {
   return new Date(dateString) < new Date(new Date().setHours(0, 0, 0, 0))
 }
 
 const loadStats = async () => {
-  // 1. حساب المصروفات أولاً
+  // 1. المصروفات
   const { data: expensesData } = await supabase.from('expenses').select('amount')
   const totalExpenses = expensesData ? expensesData.reduce((sum, e) => sum + Number(e.amount), 0) : 0
   stats.value.expenses = totalExpenses
 
-  // 2. جلب الوحدات لحساب الإشغال
-  const { data: units } = await supabase.from('units').select('status, name, type')
+  // 2. الوحدات
+  const { data: units } = await supabase.from('units').select('status')
   if (units) {
     stats.value.totalUnits = units.length
     stats.value.occupiedUnits = units.filter(u => u.status === 'مؤجرة').length
     stats.value.occupancyRate = units.length ? Math.round((stats.value.occupiedUnits / units.length) * 100) : 0
   }
 
-  // 3. جلب الفواتير لحساب الماليات والجداول
+  // 3. الفواتير (جلب وتحليل ذكي)
   const { data: invoices } = await supabase
     .from('invoices')
     .select('id, amount, paid_amount, status, due_date, payment_date, created_at, updated_at, tenants(name), units(name)')
   
   if (invoices) {
-    // حساب المجاميع
-    const collectedTotal = invoices.filter(i => ['مدفوع', 'مدفوع جزئياً'].includes(i.status)).reduce((sum, i) => sum + (i.paid_amount || 0), 0)
-    stats.value.collected = collectedTotal
+    const today = new Date()
+    today.setHours(0,0,0,0)
+    
+    // تاريخ بعد 3 أشهر من الآن (لتجاهل المستحقات البعيدة جداً مثل 2030 من الإحصائيات الحالية)
+    const futureThreshold = new Date(today)
+    futureThreshold.setMonth(today.getMonth() + 3)
 
-    // حساب صافي الربح (المحصل - المصروفات)
+    // --- حساب الإحصائيات ---
+    // المحصل: كل ما تم دفعه (بغض النظر عن التاريخ)
+    const collectedTotal = invoices.reduce((sum, i) => sum + (Number(i.paid_amount) || 0), 0)
+    stats.value.collected = collectedTotal
     stats.value.netProfit = collectedTotal - totalExpenses
 
-    // المتبقي = (المبلغ الكلي - المدفوع) للفواتير غير المدفوعة بالكامل
+    // المتبقي (الديون): نحسب فقط الديون الحالية أو القريبة (نستثني العقود المستقبلية البعيدة)
     stats.value.pending = invoices.reduce((sum, i) => {
+      // إذا كان مدفوع بالكامل، لا نحسبه
       if (i.status === 'مدفوع') return sum
-      return sum + (i.amount - (i.paid_amount || 0))
+      
+      // إذا كان تاريخ الاستحقاق بعيداً جداً (أكثر من 3 أشهر)، لا نعتبره ديناً حالياً
+      if (new Date(i.due_date) > futureThreshold) return sum
+
+      return sum + (Number(i.amount) - (Number(i.paid_amount) || 0))
     }, 0)
     
     // --- الجدول الأيمن: آخر عمليات الدفع ---
+    // نرتب حسب تاريخ الدفع (payment_date) إذا وجد، أو تاريخ التحديث
     recentPaid.value = invoices
-      .filter(i => i.paid_amount > 0)
-      .sort((a, b) => new Date(b.payment_date || b.updated_at) - new Date(a.payment_date || a.updated_at))
+      .filter(i => (Number(i.paid_amount) || 0) > 0) // فقط الفواتير التي تم دفع جزء منها
+      .sort((a, b) => {
+        const dateA = new Date(a.payment_date || a.updated_at)
+        const dateB = new Date(b.payment_date || b.updated_at)
+        return dateB - dateA // الأحدث أولاً
+      })
       .slice(0, 5)
 
-    // --- الجدول الأيسر: متابعة التحصيل ---
+    // --- الجدول الأيسر: متابعة التحصيل (المتعثرة والقريبة) ---
     unpaidInvoices.value = invoices
-      .filter(i => i.status !== 'مدفوع')
-      .sort((a, b) => new Date(a.due_date) - new Date(b.due_date))
+      .filter(i => {
+        if (i.status === 'مدفوع') return false // نستبعد المدفوع
+        const dueDate = new Date(i.due_date)
+        // نريد فقط: المتأخرات (قبل اليوم) + المستحقات القريبة (خلال 3 أشهر)
+        // ونستبعد فواتير 2030 وما بعدها
+        return dueDate <= futureThreshold
+      })
+      .sort((a, b) => new Date(a.due_date) - new Date(b.due_date)) // الأقدم استحقاقاً أولاً (المتأخرات تظهر في الأعلى)
       .slice(0, 6)
   }
 
-  // 4. عدد المستأجرين
+  // 4. المستأجرين
   const { count } = await supabase.from('tenants').select('*', { count: 'exact', head: true })
   stats.value.tenantsCount = count || 0
 }

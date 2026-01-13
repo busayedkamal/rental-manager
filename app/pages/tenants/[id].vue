@@ -135,7 +135,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { createClient } from '@supabase/supabase-js'
-import DocumentsManager from '~/components/DocumentsManager.vue' // ✅ الاستيراد صحيح
+import DocumentsManager from '~/components/DocumentsManager.vue'
 
 const route = useRoute()
 const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_KEY)
@@ -147,14 +147,13 @@ const invoices = ref([])
 
 const formatMoney = (val) => Number(val).toLocaleString()
 
-// حسابات المحفظة
+// ✅ التعديل هنا: تحويل القيم إلى أرقام إجبارياً لتجنب مشكلة "ليس رقماً"
 const totals = computed(() => {
-  const required = invoices.value.reduce((sum, inv) => sum + inv.amount, 0)
-  const paid = invoices.value.reduce((sum, inv) => sum + (inv.paid_amount || 0), 0)
+  const required = invoices.value.reduce((sum, inv) => sum + Number(inv.amount || 0), 0)
+  const paid = invoices.value.reduce((sum, inv) => sum + Number(inv.paid_amount || 0), 0)
   return { required, paid }
 })
 
-// الرصيد: (المدفوع - المطلوب).
 const walletBalance = computed(() => totals.value.paid - totals.value.required)
 
 const loadData = async () => {
@@ -164,7 +163,7 @@ const loadData = async () => {
   const { data: t } = await supabase.from('tenants').select('*').eq('id', id).single()
   tenant.value = t
 
-  // 2. العقد النشط (مع بيانات الوحدة والعدادات)
+  // 2. العقد النشط
   const { data: c } = await supabase
     .from('contracts')
     .select('*, units(*)') 
@@ -174,12 +173,12 @@ const loadData = async () => {
   
   if (c && c.length > 0) activeContract.value = c[0]
 
-  // 3. الفواتير والسجل المالي
+  // 3. الفواتير
   const { data: inv } = await supabase
     .from('invoices')
     .select('*')
     .eq('tenant_id', id)
-    .order('due_date', { ascending: true })
+    .order('due_date', { ascending: false }) 
   
   invoices.value = inv || []
   

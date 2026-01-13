@@ -35,18 +35,46 @@
 
     <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
       <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50 text-xs text-gray-500 uppercase font-medium">
+        <thead class="bg-gray-50 text-xs text-gray-500 uppercase font-medium select-none">
           <tr>
-            <th class="px-6 py-4 text-right">المستأجر / الوحدة</th>
-            <th class="px-6 py-4 text-right">الاستحقاق</th>
-            <th class="px-6 py-4 text-right">المبلغ (المطلوب / المدفوع)</th>
-            <th class="px-6 py-4 text-right">الحالة</th>
+            <th @click="toggleSort('tenant')" class="px-6 py-4 text-right cursor-pointer hover:text-indigo-600 transition-colors">
+              <div class="flex items-center justify-end gap-1">
+                المستأجر / الوحدة
+                <span v-if="sortKey === 'tenant'">{{ sortOrder === 'asc' ? '⬆️' : '⬇️' }}</span>
+                <span v-else class="opacity-20">↕️</span>
+              </div>
+            </th>
+
+            <th @click="toggleSort('due_date')" class="px-6 py-4 text-right cursor-pointer hover:text-indigo-600 transition-colors">
+              <div class="flex items-center justify-end gap-1">
+                الاستحقاق
+                <span v-if="sortKey === 'due_date'">{{ sortOrder === 'asc' ? '⬆️' : '⬇️' }}</span>
+                <span v-else class="opacity-20">↕️</span>
+              </div>
+            </th>
+
+            <th @click="toggleSort('amount')" class="px-6 py-4 text-right cursor-pointer hover:text-indigo-600 transition-colors">
+              <div class="flex items-center justify-end gap-1">
+                المبلغ (المطلوب / المدفوع)
+                <span v-if="sortKey === 'amount'">{{ sortOrder === 'asc' ? '⬆️' : '⬇️' }}</span>
+                <span v-else class="opacity-20">↕️</span>
+              </div>
+            </th>
+
+            <th @click="toggleSort('status')" class="px-6 py-4 text-right cursor-pointer hover:text-indigo-600 transition-colors">
+              <div class="flex items-center justify-end gap-1">
+                الحالة
+                <span v-if="sortKey === 'status'">{{ sortOrder === 'asc' ? '⬆️' : '⬇️' }}</span>
+                <span v-else class="opacity-20">↕️</span>
+              </div>
+            </th>
+
             <th class="px-6 py-4 text-center">الإجراء المالي</th>
             <th class="px-6 py-4 text-center">خيارات</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-200">
-          <tr v-for="inv in filteredInvoices" :key="inv.id" class="hover:bg-gray-50 transition-colors">
+          <tr v-for="inv in sortedInvoices" :key="inv.id" class="hover:bg-gray-50 transition-colors">
             
             <td class="px-6 py-4">
               <div class="font-bold text-gray-800">{{ inv.tenants?.name }}</div>
@@ -103,24 +131,8 @@
             <td class="px-6 py-4 text-center">
               <div class="flex justify-center gap-2">
                 <button @click="openInvoicePrint(inv)" class="text-gray-500 hover:text-indigo-600 p-2 rounded-full hover:bg-indigo-50 transition" title="طباعة الفاتورة">🖨️</button>
-                
-                <button 
-                  v-if="canEdit" 
-                  @click="openEditModal(inv)" 
-                  class="text-gray-400 hover:text-blue-600 p-2 rounded-full hover:bg-gray-100" 
-                  title="تعديل"
-                >
-                  ✏️
-                </button>
-
-                <button 
-                  v-if="canDelete" 
-                  @click="deleteInvoice(inv.id)" 
-                  class="text-gray-400 hover:text-red-600 p-2 rounded-full hover:bg-gray-100" 
-                  title="حذف (للمالك فقط)"
-                >
-                  🗑️
-                </button>
+                <button v-if="canEdit" @click="openEditModal(inv)" class="text-gray-400 hover:text-blue-600 p-2 rounded-full hover:bg-gray-100" title="تعديل">✏️</button>
+                <button v-if="canDelete" @click="deleteInvoice(inv.id)" class="text-gray-400 hover:text-red-600 p-2 rounded-full hover:bg-gray-100" title="حذف">🗑️</button>
               </div>
             </td>
           </tr>
@@ -128,13 +140,8 @@
       </table>
     </div>
 
-    <InvoicePrint 
-      v-if="showPrintModal" 
-      :isOpen="showPrintModal" 
-      :invoice="selectedInvoice" 
-      @close="showPrintModal = false" 
-    />
-
+    <InvoicePrint v-if="showPrintModal" :isOpen="showPrintModal" :invoice="selectedInvoice" @close="showPrintModal = false" />
+    
     <div v-if="showPaymentModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-50 p-4" dir="rtl">
       <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
         <div class="bg-indigo-600 p-4 flex justify-between items-center text-white">
@@ -191,6 +198,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { createClient } from '@supabase/supabase-js'
 import InvoicePrint from '~/components/InvoicePrint.vue'
+import { usePermissions } from '~/composables/usePermissions'
 
 const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_KEY)
 const invoices = ref([])
@@ -204,8 +212,11 @@ const currentFilter = ref('all')
 const paymentForm = ref({ id: null, currentPaid: 0, totalDue: 0, remaining: 0, amountToPay: 0, payment_date: '', payment_method: 'تحويل بنكي' })
 const editForm = ref({})
 
-// ✅ تفعيل الصلاحيات
 const { canDelete, canEdit, setRole } = usePermissions()
+
+// متغيرات الفرز الجديدة
+const sortKey = ref('due_date')
+const sortOrder = ref('desc')
 
 const totalUnpaid = computed(() => invoices.value.reduce((sum, i) => sum + (i.amount - (i.paid_amount || 0)), 0))
 const totalPaid = computed(() => invoices.value.reduce((sum, i) => sum + (i.paid_amount || 0), 0))
@@ -224,12 +235,55 @@ const filteredInvoices = computed(() => {
   return invoices.value
 })
 
+// دالة الفرز
+const toggleSort = (key) => {
+  if (sortKey.value === key) {
+    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortKey.value = key
+    sortOrder.value = 'asc'
+  }
+}
+
+// القائمة المرتبة النهائية
+const sortedInvoices = computed(() => {
+  let data = [...filteredInvoices.value]
+  
+  return data.sort((a, b) => {
+    let modifier = sortOrder.value === 'asc' ? 1 : -1
+
+    if (sortKey.value === 'tenant') {
+      const nameA = a.tenants?.name || ''
+      const nameB = b.tenants?.name || ''
+      return nameA.localeCompare(nameB) * modifier
+    }
+    
+    if (sortKey.value === 'amount') {
+      return (a.amount - b.amount) * modifier
+    }
+    
+    if (sortKey.value === 'due_date') {
+      return (new Date(a.due_date) - new Date(b.due_date)) * modifier
+    }
+
+    if (sortKey.value === 'status') {
+      return a.status.localeCompare(b.status) * modifier
+    }
+
+    return 0
+  })
+})
+
 const fetchInvoices = async () => {
-  const { data } = await supabase.from('invoices').select(`*, tenants(name), units(name)`).order('due_date', { ascending: true })
+  const { data } = await supabase
+    .from('invoices')
+    .select(`*, tenants(name), units(name)`)
+    // جلب البيانات بشكل افتراضي مرتبة حسب الأحدث لضمان وجودها
+    .order('due_date', { ascending: false }) 
+    
   invoices.value = data || []
 }
 
-// ✅ دالة جلب دور المستخدم الحالي
 const loadUserRole = async () => {
   const { data: { user } } = await supabase.auth.getUser()
   if (user) {
@@ -238,6 +292,7 @@ const loadUserRole = async () => {
   }
 }
 
+// ... بقية الدوال (openPaymentModal, undoPayment, etc.) ...
 const openPaymentModal = (inv) => {
   const paid = Number(inv.paid_amount || 0)
   const total = Number(inv.amount)
@@ -285,7 +340,7 @@ const deleteInvoice = async (id) => {
 }
 
 onMounted(() => {
-  loadUserRole() // ✅ تحميل الصلاحيات
+  loadUserRole()
   fetchInvoices()
 })
 </script>

@@ -101,7 +101,7 @@
           'border-indigo-100 hover:border-indigo-400': unit.status === 'مؤجرة',
           'border-orange-100 hover:border-orange-400': unit.status === 'صيانة'
         }"
-        @click="editUnit(unit)"
+        @click="handleUnitClick(unit)" 
       >
         <div class="h-2 w-full" 
           :class="{
@@ -116,7 +116,10 @@
             {{ unit.type === 'محل تجاري' ? '🏪' : (unit.type === 'فيلا' ? '🏡' : '🏢') }}
           </div>
           
-          <h3 class="font-bold text-gray-800 text-lg mb-1">{{ unit.name }}</h3>
+          <h3 class="font-bold text-gray-800 text-lg mb-1 flex items-center justify-center gap-1">
+            {{ unit.name }}
+            <span v-if="unit.status === 'مؤجرة'" class="text-[10px] text-indigo-400">↗</span>
+          </h3>
           
           <p class="text-xs text-gray-500 font-mono mb-3 bg-gray-50 inline-block px-2 py-1 rounded">
             {{ Number(unit.price).toLocaleString() }} ريال
@@ -127,7 +130,15 @@
           </div>
         </div>
 
-        <div class="absolute top-3 left-3">
+        <button 
+          @click.stop="editUnit(unit)" 
+          class="absolute top-2 left-2 bg-gray-100 hover:bg-indigo-100 text-gray-500 hover:text-indigo-600 p-1.5 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-all z-10"
+          title="تعديل الوحدة"
+        >
+          ✏️
+        </button>
+
+        <div class="absolute top-3 right-3">
           <span v-if="unit.status === 'مؤجرة'" class="w-2 h-2 rounded-full bg-indigo-500 block animate-pulse"></span>
         </div>
       </div>
@@ -153,7 +164,13 @@
           <tbody class="divide-y divide-gray-200">
             <tr v-for="unit in units" :key="unit.id" class="hover:bg-indigo-50 transition-colors">
               <td class="px-6 py-4">
-                <div class="font-bold text-gray-800">{{ unit.name }}</div>
+                <div 
+                  @click="handleUnitClick(unit)" 
+                  class="font-bold text-gray-800"
+                  :class="{'cursor-pointer hover:text-indigo-600 hover:underline': unit.status === 'مؤجرة'}"
+                >
+                  {{ unit.name }}
+                </div>
                 <div class="text-xs text-gray-500 mt-0.5">{{ unit.type }}</div>
               </td>
               <td class="px-6 py-4">
@@ -191,30 +208,58 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router' // 👈 استيراد الراوتر
 import { createClient } from '@supabase/supabase-js'
 
+const router = useRouter()
 const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_KEY)
 const units = ref([])
 const loading = ref(false)
-const viewMode = ref('grid') // الحالة الافتراضية: عرض المخطط
+const viewMode = ref('grid')
 
-// إضافة الحقول الجديدة للنموذج
-const form = ref({ 
-  name: '', 
-  type: 'شقة', 
-  price: '',
-  electricity_meter: '', 
-  water_meter: '',
-  status: 'شاغرة'
-})
-
+const form = ref({ name: '', type: 'شقة', price: '', electricity_meter: '', water_meter: '', status: 'شاغرة' })
 const isEditing = ref(false)
 const editingId = ref(null)
 
 const fetchUnits = async () => {
-  // ترتيب الوحدات حسب الاسم ليكون العرض منطقياً في المخطط
-  const { data } = await supabase.from('units').select('*').order('name', { ascending: true })
-  units.value = data || []
+  // 👇 جلب الوحدات مع معلومات العقود لمعرفة المستأجر الحالي
+  const { data } = await supabase.from('units')
+    .select(`
+      *,
+      contract_units (
+        contracts (
+          tenant_id,
+          status
+        )
+      )
+    `)
+    .order('name', { ascending: true })
+
+  // معالجة البيانات لاستخراج معرف المستأجر مباشرة
+  if (data) {
+    units.value = data.map(unit => {
+      // البحث عن عقد ساري مرتبط بهذه الوحدة
+      const activeLink = unit.contract_units?.find(cu => 
+        cu.contracts?.status === 'ساري' || unit.status === 'مؤجرة' // للحيطة
+      )
+      
+      return {
+        ...unit,
+        activeTenantId: activeLink?.contracts?.tenant_id // نضيف هذا الحقل
+      }
+    })
+  }
+}
+
+// 👇 الدالة الجديدة للتنقل عند الضغط
+const handleUnitClick = (unit) => {
+  if (unit.status === 'مؤجرة' && unit.activeTenantId) {
+    // إذا مؤجرة، اذهب للمستأجر
+    router.push(`/tenants/${unit.activeTenantId}`)
+  } else {
+    // إذا شاغرة، افتح التعديل
+    editUnit(unit)
+  }
 }
 
 const saveUnit = async () => {
@@ -225,7 +270,6 @@ const saveUnit = async () => {
     const { error: e } = await supabase.from('units').update(form.value).eq('id', editingId.value)
     error = e
   } else {
-    // عند الإضافة، الحالة دائماً شاغرة افتراضياً
     const { error: e } = await supabase.from('units').insert([{...form.value, status: 'شاغرة'}])
     error = e
   }
@@ -245,7 +289,7 @@ const editUnit = (unit) => {
     price: unit.price,
     electricity_meter: unit.electricity_meter || '',
     water_meter: unit.water_meter || '',
-    status: unit.status // السماح بتعديل الحالة يدوياً
+    status: unit.status 
   }
   isEditing.value = true
   editingId.value = unit.id

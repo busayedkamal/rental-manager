@@ -57,7 +57,7 @@
           </select>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">السعر السنوي</label>
+          <label class="block text-sm font-medium text-gray-700 mb-1">قيمة الإيجار السنوي</label>
           <div class="relative">
             <input v-model="form.price" type="number" required class="input-field pl-12" placeholder="0.00" />
             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">SAR</span>

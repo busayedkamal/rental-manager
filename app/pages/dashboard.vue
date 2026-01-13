@@ -58,7 +58,7 @@
           <tbody class="divide-y divide-gray-100">
             <tr v-for="inv in recentPaid" :key="inv.id" class="hover:bg-green-50/50 transition-colors">
               <td class="p-4">
-                <div class="font-bold text-gray-700">{{ inv.tenants?.name }}</div>
+                <div class="font-bold text-gray-800">{{ inv.tenants?.name }}</div>
                 <div class="text-xs text-gray-400">{{ inv.units?.name }}</div>
               </td>
               <td class="p-4 text-gray-500 text-left" dir="ltr">
@@ -140,17 +140,18 @@ const stats = ref({
 const recentPaid = ref([])
 const unpaidInvoices = ref([])
 
-const formatMoney = (val) => Number(val).toLocaleString() + ' SAR'
+const formatMoney = (val) => Number(val || 0).toLocaleString() + ' SAR'
 
-// دالة التحقق من التأخير
 const isOverdue = (dateString) => {
   return new Date(dateString) < new Date(new Date().setHours(0, 0, 0, 0))
 }
 
 const loadStats = async () => {
+  console.log('بدء تحديث البيانات...') // للتأكد من تشغيل الدالة
+
   // 1. المصروفات
   const { data: expensesData } = await supabase.from('expenses').select('amount')
-  const totalExpenses = expensesData ? expensesData.reduce((sum, e) => sum + Number(e.amount), 0) : 0
+  const totalExpenses = expensesData ? expensesData.reduce((sum, e) => sum + Number(e.amount || 0), 0) : 0
   stats.value.expenses = totalExpenses
 
   // 2. الوحدات
@@ -161,60 +162,65 @@ const loadStats = async () => {
     stats.value.occupancyRate = units.length ? Math.round((stats.value.occupiedUnits / units.length) * 100) : 0
   }
 
-  // 3. الفواتير
-  // نجلب كل الفواتير لتحليلها في المتصفح لضمان الدقة
-  const { data: invoices } = await supabase
+  // 3. الفواتير - استخدام (*) لضمان جلب كل شيء مثل صفحة المالية
+  const { data: invoices, error } = await supabase
     .from('invoices')
-    .select('id, amount, paid_amount, status, due_date, payment_date, created_at, updated_at, tenants(name), units(name)')
+    .select(`*, tenants(name), units(name)`)
   
-  if (invoices) {
-    const today = new Date()
-    today.setHours(0,0,0,0) // تصفير الوقت للمقارنة الدقيقة
-    
-    // حد الاستحقاق القريب (شهرين من الآن)
-    const dueSoonLimit = new Date(today)
-    dueSoonLimit.setDate(today.getDate() + 60)
+  if (error) {
+    console.error('خطأ في جلب الفواتير:', error)
+  }
 
-    // --- الإحصائيات العامة ---
-    // المحصل
+  if (invoices) {
+    console.log(`تم جلب ${invoices.length} فاتورة`) // للتأكد في الكونسول
+
+    const today = new Date()
+    today.setHours(0,0,0,0)
+    
+    const dueSoonLimit = new Date(today)
+    dueSoonLimit.setDate(today.getDate() + 60) // بعد شهرين
+
+    // --- حساب الإحصائيات ---
+    
+    // أ. المحصل (كل ما تم دفعه)
     const collectedTotal = invoices.reduce((sum, i) => sum + (Number(i.paid_amount) || 0), 0)
     stats.value.collected = collectedTotal
     stats.value.netProfit = collectedTotal - totalExpenses
 
-    // المتبقي (الديون) - نستثني المستقبلية البعيدة (أكثر من شهرين)
+    // ب. المتبقي (الديون) - نستثني المستقبلية البعيدة (أكثر من شهرين)
     stats.value.pending = invoices.reduce((sum, i) => {
-      if (i.status === 'مدفوع') return sum
-      if (new Date(i.due_date) > dueSoonLimit) return sum // تجاهل المستقبلية البعيدة
-      return sum + (Number(i.amount) - (Number(i.paid_amount) || 0))
+      // 1. إذا الفاتورة مدفوعة بالكامل، تجاهلها
+      if (i.status === 'مدفوع' || (Number(i.paid_amount) >= Number(i.amount))) return sum
+      
+      // 2. إذا التاريخ بعيد جداً (مستقبلي)، تجاهلها من حساب الديون الحالية
+      if (new Date(i.due_date) > dueSoonLimit) return sum 
+
+      // 3. اجمع المتبقي
+      return sum + (Number(i.amount || 0) - (Number(i.paid_amount) || 0))
     }, 0)
     
-    // --- الجدول الأيمن: آخر عمليات الدفع المستلمة ---
-    // الشرط: الحالة مدفوع أو مدفوع جزئياً، أو يوجد مبلغ مدفوع
+    // --- الجدول الأيمن: آخر عمليات الدفع ---
+    // الشرط: أي مبلغ مدفوع > 0
     recentPaid.value = invoices
-      .filter(i => i.status === 'مدفوع' || i.status === 'مدفوع جزئياً' || (Number(i.paid_amount) > 0))
+      .filter(i => (Number(i.paid_amount) || 0) > 0)
       .sort((a, b) => {
-        // الترتيب حسب تاريخ الدفع، وإن لم يوجد فتاريخ التحديث
-        const dateA = new Date(a.payment_date || a.updated_at)
-        const dateB = new Date(b.payment_date || b.updated_at)
+        const dateA = new Date(a.payment_date || a.updated_at || a.created_at)
+        const dateB = new Date(b.payment_date || b.updated_at || b.created_at)
         return dateB - dateA 
       })
       .slice(0, 5)
 
-    // --- الجدول الأيسر: متابعة التحصيل (المتأخر + المستحق قريباً) ---
+    // --- الجدول الأيسر: متابعة التحصيل ---
     unpaidInvoices.value = invoices
       .filter(i => {
         // 1. استبعاد المدفوع
-        if (i.status === 'مدفوع') return false
+        if (i.status === 'مدفوع' || (Number(i.paid_amount) >= Number(i.amount))) return false
         
-        // 2. التحقق من التاريخ
+        // 2. التحقق من التاريخ (متأخر أو قريب)
         const dueDate = new Date(i.due_date)
-        
-        // نريد عرض الفاتورة إذا كانت:
-        // أ. متأخرة (dueDate < today)
-        // ب. أو مستحقة قريباً (dueDate <= dueSoonLimit)
         return dueDate <= dueSoonLimit
       })
-      .sort((a, b) => new Date(a.due_date) - new Date(b.due_date)) // الأقدم استحقاقاً يظهر أولاً
+      .sort((a, b) => new Date(a.due_date) - new Date(b.due_date))
       .slice(0, 6)
   }
 

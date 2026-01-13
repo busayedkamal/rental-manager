@@ -13,24 +13,29 @@
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
       <div class="bg-white p-5 rounded-xl shadow-sm border-r-4 border-indigo-500">
-        <div class="text-gray-500 text-sm font-medium">عدد الفواتير</div>
-        <div class="text-3xl font-bold text-gray-800 mt-1">{{ invoices.length }}</div>
+        <div class="text-gray-500 text-sm font-medium">عدد الفواتير (الحالية)</div>
+        <div class="text-3xl font-bold text-gray-800 mt-1">{{ currentStats.count }}</div>
       </div>
       <div class="bg-white p-5 rounded-xl shadow-sm border-r-4 border-red-500">
-        <div class="text-gray-500 text-sm font-medium">مستحقات (المتبقي)</div>
-        <div class="text-3xl font-bold text-red-600 mt-1">{{ totalUnpaid.toLocaleString() }} <span class="text-sm">ريال</span></div>
+        <div class="text-gray-500 text-sm font-medium">مستحقات واجبة السداد</div>
+        <div class="text-3xl font-bold text-red-600 mt-1">{{ currentStats.unpaid.toLocaleString() }} <span class="text-sm">ريال</span></div>
       </div>
       <div class="bg-white p-5 rounded-xl shadow-sm border-r-4 border-green-500">
         <div class="text-gray-500 text-sm font-medium">تم تحصيله</div>
-        <div class="text-3xl font-bold text-green-600 mt-1">{{ totalPaid.toLocaleString() }} <span class="text-sm">ريال</span></div>
+        <div class="text-3xl font-bold text-green-600 mt-1">{{ currentStats.paid.toLocaleString() }} <span class="text-sm">ريال</span></div>
       </div>
     </div>
 
     <div class="flex gap-2 overflow-x-auto pb-2">
-      <button @click="currentFilter = 'all'" class="filter-btn" :class="currentFilter === 'all' ? 'active' : ''">📋 الكل</button>
+      <button @click="currentFilter = 'current'" class="filter-btn" :class="currentFilter === 'current' ? 'active' : ''">📋 السجل الجاري</button>
+      
       <button @click="currentFilter = 'overdue'" class="filter-btn" :class="currentFilter === 'overdue' ? 'active-red' : ''">⚠️ متأخرات</button>
-      <button @click="currentFilter = 'pending'" class="filter-btn" :class="currentFilter === 'pending' ? 'active-orange' : ''">⏳ مستحق قريباً</button>
+      
+      <button @click="currentFilter = 'soon'" class="filter-btn" :class="currentFilter === 'soon' ? 'active-orange' : ''">⏳ مستحق قريباً (شهرين)</button>
+      
       <button @click="currentFilter = 'paid'" class="filter-btn" :class="currentFilter === 'paid' ? 'active-green' : ''">✅ مدفوع</button>
+      
+      <button @click="currentFilter = 'future'" class="filter-btn" :class="currentFilter === 'future' ? 'active-gray' : ''">📅 استحقاق مستقبلي</button>
     </div>
 
     <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
@@ -82,10 +87,12 @@
             </td>
 
             <td class="px-6 py-4">
-              <div :class="isOverdue(inv) ? 'text-red-600 font-bold' : 'text-gray-600'">
+              <div :class="getDateColor(inv)">
                 {{ inv.due_date }}
               </div>
-              <div v-if="isOverdue(inv)" class="text-[10px] text-red-500 mt-1">متأخر عن السداد</div>
+              <div v-if="getStatusLabel(inv)" class="text-[10px] mt-1 font-bold" :class="getDateColor(inv)">
+                {{ getStatusLabel(inv) }}
+              </div>
             </td>
 
             <td class="px-6 py-4">
@@ -93,8 +100,8 @@
               <div v-if="inv.paid_amount > 0" class="text-green-600 text-sm font-bold mt-1">
                 ✅ وصل: {{ Number(inv.paid_amount).toLocaleString() }}
               </div>
-              <div v-if="inv.amount - inv.paid_amount > 0" class="text-red-500 text-xs mt-1">
-                 متبقي: {{ Number(inv.amount - (inv.paid_amount || 0)).toLocaleString() }}
+              <div v-if="inv.amount - inv.paid_amount > 0" class="text-gray-400 text-xs mt-1">
+                 متبقي: <span class="font-bold text-red-500">{{ Number(inv.amount - (inv.paid_amount || 0)).toLocaleString() }}</span>
               </div>
             </td>
 
@@ -134,6 +141,11 @@
                 <button v-if="canEdit" @click="openEditModal(inv)" class="text-gray-400 hover:text-blue-600 p-2 rounded-full hover:bg-gray-100" title="تعديل">✏️</button>
                 <button v-if="canDelete" @click="deleteInvoice(inv.id)" class="text-gray-400 hover:text-red-600 p-2 rounded-full hover:bg-gray-100" title="حذف">🗑️</button>
               </div>
+            </td>
+          </tr>
+          <tr v-if="sortedInvoices.length === 0">
+            <td colspan="6" class="p-8 text-center text-gray-400 bg-gray-50">
+              لا توجد فواتير في هذا التصنيف حالياً ✨
             </td>
           </tr>
         </tbody>
@@ -207,35 +219,81 @@ const showPaymentModal = ref(false)
 const showEditModal = ref(false)
 const showPrintModal = ref(false)
 const selectedInvoice = ref(null)
-const currentFilter = ref('all')
+const currentFilter = ref('current') // الوضع الافتراضي: السجل الجاري
 
 const paymentForm = ref({ id: null, currentPaid: 0, totalDue: 0, remaining: 0, amountToPay: 0, payment_date: '', payment_method: 'تحويل بنكي' })
 const editForm = ref({})
 
 const { canDelete, canEdit, setRole } = usePermissions()
 
-// متغيرات الفرز الجديدة
+// متغيرات الفرز
 const sortKey = ref('due_date')
-const sortOrder = ref('desc')
+const sortOrder = ref('asc') // الأفضل للأقدم أولاً
 
-const totalUnpaid = computed(() => invoices.value.reduce((sum, i) => sum + (i.amount - (i.paid_amount || 0)), 0))
-const totalPaid = computed(() => invoices.value.reduce((sum, i) => sum + (i.paid_amount || 0), 0))
+// 🧠 المنطق الجديد لتصنيف الفواتير
+const classifyInvoice = (inv) => {
+  if (inv.status === 'مدفوع') return 'paid'
+  
+  const today = new Date()
+  today.setHours(0,0,0,0)
+  
+  const dueDate = new Date(inv.due_date)
+  const twoMonthsLater = new Date(today)
+  twoMonthsLater.setDate(today.getDate() + 60) // 60 يوم
 
-const checkOverdue = (inv) => {
-  if (['مدفوع'].includes(inv.status)) return false
-  return new Date(inv.due_date) < new Date(new Date().setHours(0,0,0,0))
+  if (dueDate < today) return 'overdue' // متأخر
+  if (dueDate <= twoMonthsLater) return 'soon' // مستحق قريباً (أقل من شهرين)
+  return 'future' // مستقبلي (أكثر من شهرين)
 }
-const isOverdue = (inv) => checkOverdue(inv)
 
-const filteredInvoices = computed(() => {
-  if (currentFilter.value === 'all') return invoices.value
-  if (currentFilter.value === 'paid') return invoices.value.filter(i => i.status === 'مدفوع')
-  if (currentFilter.value === 'overdue') return invoices.value.filter(i => i.status !== 'مدفوع' && checkOverdue(i))
-  if (currentFilter.value === 'pending') return invoices.value.filter(i => i.status !== 'مدفوع' && !checkOverdue(i))
-  return invoices.value
+// 📊 الإحصائيات (تستثني المستقبلي لكي لا تشوه الأرقام)
+const currentStats = computed(() => {
+  // نأخذ كل شيء ما عدا المستقبلي
+  const relevantInvoices = invoices.value.filter(i => classifyInvoice(i) !== 'future')
+  
+  const unpaid = relevantInvoices.reduce((sum, i) => sum + (i.amount - (i.paid_amount || 0)), 0)
+  const paid = relevantInvoices.reduce((sum, i) => sum + (i.paid_amount || 0), 0)
+  
+  return {
+    count: relevantInvoices.length,
+    unpaid,
+    paid
+  }
 })
 
-// دالة الفرز
+// تلوين التواريخ
+const getDateColor = (inv) => {
+  const type = classifyInvoice(inv)
+  if (type === 'paid') return 'text-green-600'
+  if (type === 'overdue') return 'text-red-600 font-bold'
+  if (type === 'soon') return 'text-orange-500 font-bold'
+  return 'text-gray-400' // future
+}
+
+const getStatusLabel = (inv) => {
+  const type = classifyInvoice(inv)
+  if (type === 'overdue') return '⚠️ متأخر'
+  if (type === 'soon') return '⏳ خلال شهرين'
+  if (type === 'future') return '📅 مستقبلي'
+  return ''
+}
+
+// 🔍 الفلترة
+const filteredInvoices = computed(() => {
+  return invoices.value.filter(inv => {
+    const type = classifyInvoice(inv)
+    
+    if (currentFilter.value === 'current') return type !== 'future' // الكل ما عدا المستقبلي
+    if (currentFilter.value === 'overdue') return type === 'overdue'
+    if (currentFilter.value === 'soon') return type === 'soon'
+    if (currentFilter.value === 'future') return type === 'future'
+    if (currentFilter.value === 'paid') return type === 'paid'
+    
+    return true
+  })
+})
+
+// 🔃 الفرز
 const toggleSort = (key) => {
   if (sortKey.value === key) {
     sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
@@ -245,7 +303,6 @@ const toggleSort = (key) => {
   }
 }
 
-// القائمة المرتبة النهائية
 const sortedInvoices = computed(() => {
   let data = [...filteredInvoices.value]
   
@@ -257,18 +314,9 @@ const sortedInvoices = computed(() => {
       const nameB = b.tenants?.name || ''
       return nameA.localeCompare(nameB) * modifier
     }
-    
-    if (sortKey.value === 'amount') {
-      return (a.amount - b.amount) * modifier
-    }
-    
-    if (sortKey.value === 'due_date') {
-      return (new Date(a.due_date) - new Date(b.due_date)) * modifier
-    }
-
-    if (sortKey.value === 'status') {
-      return a.status.localeCompare(b.status) * modifier
-    }
+    if (sortKey.value === 'amount') return (a.amount - b.amount) * modifier
+    if (sortKey.value === 'due_date') return (new Date(a.due_date) - new Date(b.due_date)) * modifier
+    if (sortKey.value === 'status') return a.status.localeCompare(b.status) * modifier
 
     return 0
   })
@@ -278,8 +326,8 @@ const fetchInvoices = async () => {
   const { data } = await supabase
     .from('invoices')
     .select(`*, tenants(name), units(name)`)
-    // جلب البيانات بشكل افتراضي مرتبة حسب الأحدث لضمان وجودها
-    .order('due_date', { ascending: false }) 
+    // نجلب كل الفواتير ونقوم بالفلترة محلياً
+    .order('due_date', { ascending: true }) 
     
   invoices.value = data || []
 }
@@ -292,7 +340,7 @@ const loadUserRole = async () => {
   }
 }
 
-// ... بقية الدوال (openPaymentModal, undoPayment, etc.) ...
+// ... دوال المودال والدفع والتعديل كما هي ...
 const openPaymentModal = (inv) => {
   const paid = Number(inv.paid_amount || 0)
   const total = Number(inv.amount)
@@ -318,7 +366,7 @@ const confirmPayment = async () => {
 }
 
 const undoPayment = async (inv) => {
-  if (!confirm('هل تريد إلغاء الدفع وإعادة الفاتورة كـ "غير مدفوعة"؟\n\n(سيعود المبلغ كدين على المستأجر)')) return
+  if (!confirm('هل تريد إلغاء الدفع وإعادة الفاتورة كـ "غير مدفوعة"؟')) return
   const { error } = await supabase.from('invoices').update({ status: 'غير مدفوع', paid_amount: 0, payment_date: null, payment_method: null }).eq('id', inv.id)
   if (error) alert('خطأ: ' + error.message)
   else fetchInvoices()
@@ -346,9 +394,10 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.filter-btn { @apply px-4 py-2 rounded-full text-sm font-bold transition-all border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 whitespace-nowrap; }
-.filter-btn.active { @apply bg-gray-800 text-white border-gray-800; }
-.filter-btn.active-red { @apply bg-red-600 text-white border-red-600; }
-.filter-btn.active-orange { @apply bg-orange-500 text-white border-orange-500; }
-.filter-btn.active-green { @apply bg-green-600 text-white border-green-600; }
+.filter-btn { @apply px-4 py-2 rounded-full text-sm font-bold transition-all border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 whitespace-nowrap shadow-sm; }
+.filter-btn.active { @apply bg-gray-800 text-white border-gray-800 ring-2 ring-gray-300; }
+.filter-btn.active-red { @apply bg-red-600 text-white border-red-600 ring-2 ring-red-200; }
+.filter-btn.active-orange { @apply bg-orange-500 text-white border-orange-500 ring-2 ring-orange-200; }
+.filter-btn.active-green { @apply bg-green-600 text-white border-green-600 ring-2 ring-green-200; }
+.filter-btn.active-gray { @apply bg-gray-500 text-white border-gray-500 ring-2 ring-gray-200; }
 </style>

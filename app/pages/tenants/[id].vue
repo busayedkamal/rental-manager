@@ -95,11 +95,12 @@
                 <th class="p-3 text-right">الاستحقاق</th>
                 <th class="p-3 text-right">المطلوب</th>
                 <th class="p-3 text-right">المدفوع</th>
-                <th class="p-3 text-right">تاريخ السداد</th> <th class="p-3 text-right">الرصيد/الحالة</th>
+                <th class="p-3 text-right">تاريخ السداد</th>
+                <th class="p-3 text-right">الرصيد/الحالة</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
-              <tr v-for="inv in invoices" :key="inv.id" class="hover:bg-gray-50">
+              <tr v-for="inv in invoices" :key="inv.id" class="hover:bg-gray-50 group">
                 <td class="p-3 font-mono text-gray-600">{{ inv.due_date }}</td>
                 <td class="p-3 font-bold">{{ formatMoney(inv.amount) }}</td>
                 <td class="p-3 text-green-600 font-bold">
@@ -108,10 +109,22 @@
                 </td>
                 
                 <td class="p-3">
-                  <span v-if="inv.payment_date" class="bg-gray-100 text-gray-600 font-mono text-xs px-2 py-1 rounded border">
-                    {{ inv.payment_date }}
-                  </span>
-                  <span v-else class="text-gray-300 text-xs">-</span>
+                  <div v-if="editingDateId === inv.id" class="flex items-center gap-1">
+                    <input type="date" v-model="tempDate" class="w-full border rounded px-1 py-0.5 text-xs bg-white focus:ring-2 focus:ring-indigo-500 outline-none" />
+                    <button @click="savePaymentDate(inv.id)" class="text-green-600 hover:bg-green-100 p-1 rounded">💾</button>
+                    <button @click="editingDateId = null" class="text-red-500 hover:bg-red-100 p-1 rounded">✕</button>
+                  </div>
+                  
+                  <div v-else class="flex items-center justify-between gap-2">
+                    <span v-if="inv.payment_date" class="bg-gray-100 text-gray-600 font-mono text-xs px-2 py-1 rounded border">
+                      {{ inv.payment_date }}
+                    </span>
+                    <span v-else class="text-gray-300 text-xs">-</span>
+                    
+                    <button @click="enableDateEdit(inv)" class="text-gray-400 hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity" title="تعديل التاريخ">
+                      ✏️
+                    </button>
+                  </div>
                 </td>
 
                 <td class="p-3">
@@ -128,7 +141,8 @@
                 <td class="p-3 text-right">الإجمالي</td>
                 <td class="p-3">{{ formatMoney(totals.required) }}</td>
                 <td class="p-3 text-green-600">{{ formatMoney(totals.paid) }}</td>
-                <td class="p-3"></td> <td class="p-3"></td>
+                <td class="p-3"></td>
+                <td class="p-3"></td>
               </tr>
             </tfoot>
           </table>
@@ -152,6 +166,10 @@ const loading = ref(true)
 const tenant = ref({})
 const activeContract = ref(null)
 const invoices = ref([])
+
+// متغيرات التعديل الجديدة 👇
+const editingDateId = ref(null)
+const tempDate = ref('')
 
 const formatMoney = (val) => Number(val).toLocaleString()
 
@@ -189,8 +207,30 @@ const loadData = async () => {
     .order('due_date', { ascending: false }) 
   
   invoices.value = inv || []
-  
   loading.value = false
+}
+
+// 👇 دوال تعديل التاريخ الجديدة
+const enableDateEdit = (inv) => {
+  editingDateId.value = inv.id
+  tempDate.value = inv.payment_date || new Date().toISOString().split('T')[0] // التاريخ الحالي افتراضياً
+}
+
+const savePaymentDate = async (id) => {
+  if (!tempDate.value) return // منع الحفظ إذا كان فارغاً
+  
+  const { error } = await supabase
+    .from('invoices')
+    .update({ payment_date: tempDate.value })
+    .eq('id', id)
+
+  if (error) {
+    alert('خطأ في التحديث: ' + error.message)
+  } else {
+    // تحديث البيانات محلياً وإغلاق وضع التعديل
+    await loadData()
+    editingDateId.value = null
+  }
 }
 
 onMounted(() => loadData())

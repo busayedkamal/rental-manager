@@ -95,7 +95,7 @@
                 <th class="p-3 text-right">الاستحقاق</th>
                 <th class="p-3 text-right">المطلوب</th>
                 <th class="p-3 text-right">المدفوع</th>
-                <th class="p-3 text-right">الرصيد/الحالة</th>
+                <th class="p-3 text-right">تاريخ السداد</th> <th class="p-3 text-right">الرصيد/الحالة</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
@@ -106,6 +106,14 @@
                   <span v-if="inv.paid_amount > 0">✅ {{ formatMoney(inv.paid_amount) }}</span>
                   <span v-else class="text-gray-300">-</span>
                 </td>
+                
+                <td class="p-3">
+                  <span v-if="inv.payment_date" class="bg-gray-100 text-gray-600 font-mono text-xs px-2 py-1 rounded border">
+                    {{ inv.payment_date }}
+                  </span>
+                  <span v-else class="text-gray-300 text-xs">-</span>
+                </td>
+
                 <td class="p-3">
                   <span v-if="inv.paid_amount >= inv.amount" class="text-green-600 text-xs font-bold">خالص</span>
                   <span v-else-if="inv.paid_amount > 0" class="text-orange-500 text-xs font-bold">
@@ -120,7 +128,7 @@
                 <td class="p-3 text-right">الإجمالي</td>
                 <td class="p-3">{{ formatMoney(totals.required) }}</td>
                 <td class="p-3 text-green-600">{{ formatMoney(totals.paid) }}</td>
-                <td class="p-3"></td>
+                <td class="p-3"></td> <td class="p-3"></td>
               </tr>
             </tfoot>
           </table>
@@ -147,7 +155,7 @@ const invoices = ref([])
 
 const formatMoney = (val) => Number(val).toLocaleString()
 
-// ✅ التعديل هنا: تحويل القيم إلى أرقام إجبارياً لتجنب مشكلة "ليس رقماً"
+// حسابات المحفظة
 const totals = computed(() => {
   const required = invoices.value.reduce((sum, inv) => sum + Number(inv.amount || 0), 0)
   const paid = invoices.value.reduce((sum, inv) => sum + Number(inv.paid_amount || 0), 0)

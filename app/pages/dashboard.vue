@@ -64,7 +64,7 @@
               <td class="p-4 text-gray-500 text-left" dir="ltr">
                 <span class="text-xs bg-gray-100 px-2 py-1 rounded">{{ new Date(inv.payment_date || inv.updated_at).toLocaleDateString('en-CA') }}</span>
               </td>
-              <td class="p-4 font-bold text-green-600 text-left" dir="ltr">+ {{ formatMoney(inv.paid_amount || inv.amount) }}</td>
+              <td class="p-4 font-bold text-green-600 text-left" dir="ltr">+ {{ formatMoney(inv.paid_amount || 0) }}</td>
             </tr>
             <tr v-if="recentPaid.length === 0">
               <td colspan="3" class="p-6 text-center text-gray-400">لا توجد عمليات دفع حديثة</td>
@@ -96,10 +96,10 @@
                 <div class="text-xs text-gray-500">{{ inv.units?.name }}</div>
               </td>
               <td class="p-4">
-                <div class="flex items-center gap-2">
-                  <span class="font-mono text-gray-700">{{ inv.due_date }}</span>
-                  <span v-if="isOverdue(inv.due_date)" class="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold">متأخر</span>
-                  <span v-else class="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold">قريباً</span>
+                <div class="flex flex-col gap-1">
+                  <span class="font-mono text-gray-700 font-bold">{{ inv.due_date }}</span>
+                  <span v-if="isOverdue(inv.due_date)" class="w-fit text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold">متأخر</span>
+                  <span v-else class="w-fit text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold">مستحق قريباً</span>
                 </div>
               </td>
               <td class="p-4 font-bold text-gray-700 text-left" dir="ltr">
@@ -109,7 +109,7 @@
             <tr v-if="unpaidInvoices.length === 0">
               <td colspan="3" class="p-8 text-center flex flex-col items-center">
                 <span class="text-4xl mb-2">🎉</span>
-                <span class="text-gray-500">ممتاز! لا توجد ديون أو مستحقات قريبة.</span>
+                <span class="text-gray-500">ممتاز! لا توجد ديون حالية أو قريبة.</span>
               </td>
             </tr>
           </tbody>
@@ -142,6 +142,7 @@ const unpaidInvoices = ref([])
 
 const formatMoney = (val) => Number(val).toLocaleString() + ' SAR'
 
+// دالة التحقق من التأخير
 const isOverdue = (dateString) => {
   return new Date(dateString) < new Date(new Date().setHours(0, 0, 0, 0))
 }
@@ -160,61 +161,64 @@ const loadStats = async () => {
     stats.value.occupancyRate = units.length ? Math.round((stats.value.occupiedUnits / units.length) * 100) : 0
   }
 
-  // 3. الفواتير (جلب وتحليل ذكي)
+  // 3. الفواتير
+  // نجلب كل الفواتير لتحليلها في المتصفح لضمان الدقة
   const { data: invoices } = await supabase
     .from('invoices')
     .select('id, amount, paid_amount, status, due_date, payment_date, created_at, updated_at, tenants(name), units(name)')
   
   if (invoices) {
     const today = new Date()
-    today.setHours(0,0,0,0)
+    today.setHours(0,0,0,0) // تصفير الوقت للمقارنة الدقيقة
     
-    // تاريخ بعد 3 أشهر من الآن (لتجاهل المستحقات البعيدة جداً مثل 2030 من الإحصائيات الحالية)
-    const futureThreshold = new Date(today)
-    futureThreshold.setMonth(today.getMonth() + 3)
+    // حد الاستحقاق القريب (شهرين من الآن)
+    const dueSoonLimit = new Date(today)
+    dueSoonLimit.setDate(today.getDate() + 60)
 
-    // --- حساب الإحصائيات ---
-    // المحصل: كل ما تم دفعه (بغض النظر عن التاريخ)
+    // --- الإحصائيات العامة ---
+    // المحصل
     const collectedTotal = invoices.reduce((sum, i) => sum + (Number(i.paid_amount) || 0), 0)
     stats.value.collected = collectedTotal
     stats.value.netProfit = collectedTotal - totalExpenses
 
-    // المتبقي (الديون): نحسب فقط الديون الحالية أو القريبة (نستثني العقود المستقبلية البعيدة)
+    // المتبقي (الديون) - نستثني المستقبلية البعيدة (أكثر من شهرين)
     stats.value.pending = invoices.reduce((sum, i) => {
-      // إذا كان مدفوع بالكامل، لا نحسبه
       if (i.status === 'مدفوع') return sum
-      
-      // إذا كان تاريخ الاستحقاق بعيداً جداً (أكثر من 3 أشهر)، لا نعتبره ديناً حالياً
-      if (new Date(i.due_date) > futureThreshold) return sum
-
+      if (new Date(i.due_date) > dueSoonLimit) return sum // تجاهل المستقبلية البعيدة
       return sum + (Number(i.amount) - (Number(i.paid_amount) || 0))
     }, 0)
     
-    // --- الجدول الأيمن: آخر عمليات الدفع ---
-    // نرتب حسب تاريخ الدفع (payment_date) إذا وجد، أو تاريخ التحديث
+    // --- الجدول الأيمن: آخر عمليات الدفع المستلمة ---
+    // الشرط: الحالة مدفوع أو مدفوع جزئياً، أو يوجد مبلغ مدفوع
     recentPaid.value = invoices
-      .filter(i => (Number(i.paid_amount) || 0) > 0) // فقط الفواتير التي تم دفع جزء منها
+      .filter(i => i.status === 'مدفوع' || i.status === 'مدفوع جزئياً' || (Number(i.paid_amount) > 0))
       .sort((a, b) => {
+        // الترتيب حسب تاريخ الدفع، وإن لم يوجد فتاريخ التحديث
         const dateA = new Date(a.payment_date || a.updated_at)
         const dateB = new Date(b.payment_date || b.updated_at)
-        return dateB - dateA // الأحدث أولاً
+        return dateB - dateA 
       })
       .slice(0, 5)
 
-    // --- الجدول الأيسر: متابعة التحصيل (المتعثرة والقريبة) ---
+    // --- الجدول الأيسر: متابعة التحصيل (المتأخر + المستحق قريباً) ---
     unpaidInvoices.value = invoices
       .filter(i => {
-        if (i.status === 'مدفوع') return false // نستبعد المدفوع
+        // 1. استبعاد المدفوع
+        if (i.status === 'مدفوع') return false
+        
+        // 2. التحقق من التاريخ
         const dueDate = new Date(i.due_date)
-        // نريد فقط: المتأخرات (قبل اليوم) + المستحقات القريبة (خلال 3 أشهر)
-        // ونستبعد فواتير 2030 وما بعدها
-        return dueDate <= futureThreshold
+        
+        // نريد عرض الفاتورة إذا كانت:
+        // أ. متأخرة (dueDate < today)
+        // ب. أو مستحقة قريباً (dueDate <= dueSoonLimit)
+        return dueDate <= dueSoonLimit
       })
-      .sort((a, b) => new Date(a.due_date) - new Date(b.due_date)) // الأقدم استحقاقاً أولاً (المتأخرات تظهر في الأعلى)
+      .sort((a, b) => new Date(a.due_date) - new Date(b.due_date)) // الأقدم استحقاقاً يظهر أولاً
       .slice(0, 6)
   }
 
-  // 4. المستأجرين
+  // 4. عدد المستأجرين
   const { count } = await supabase.from('tenants').select('*', { count: 'exact', head: true })
   stats.value.tenantsCount = count || 0
 }

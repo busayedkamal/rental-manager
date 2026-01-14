@@ -139,8 +139,7 @@
               <div class="flex justify-center gap-2">
                 <button @click="openInvoicePrint(inv)" class="text-gray-500 hover:text-indigo-600 p-2 rounded-full hover:bg-indigo-50 transition" title="طباعة الفاتورة">🖨️</button>
                 <button v-if="canEdit" @click="openEditModal(inv)" class="text-gray-400 hover:text-blue-600 p-2 rounded-full hover:bg-gray-100" title="تعديل">✏️</button>
-                <button v-if="canDelete" @click="deleteInvoice(inv.id)" class="text-gray-400 hover:text-red-600 p-2 rounded-full hover:bg-gray-100" title="حذف">🗑️</button>
-              </div>
+                <button @click="deleteInvoice(inv.id)" class="text-gray-400 hover:text-red-600 p-2 rounded-full hover:bg-gray-100" title="حذف">🗑️</button>              </div>
             </td>
           </tr>
           <tr v-if="sortedInvoices.length === 0">

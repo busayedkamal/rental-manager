@@ -11,19 +11,11 @@
       </button>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       
       <div class="bg-white p-6 rounded-xl shadow-sm border-r-4 border-green-500">
         <div class="text-gray-500 text-sm mb-1">تم تحصيله (الكاش)</div>
         <div class="text-2xl font-bold text-green-700">{{ formatMoney(stats.collected) }}</div>
-      </div>
-
-      <div class="bg-white p-6 rounded-xl shadow-sm border-r-4 border-teal-500">
-        <div class="text-gray-500 text-sm mb-1">صافي الربح (بعد المصروفات)</div>
-        <div class="text-2xl font-bold" :class="stats.netProfit >= 0 ? 'text-teal-700' : 'text-red-600'">
-          {{ formatMoney(stats.netProfit) }}
-        </div>
-        <div class="text-xs text-gray-400 mt-1">مصروفات: {{ formatMoney(stats.expenses) }}</div>
       </div>
 
       <div class="bg-white p-6 rounded-xl shadow-sm border-r-4 border-red-500">
@@ -58,7 +50,7 @@
           <tbody class="divide-y divide-gray-100">
             <tr v-for="inv in recentPaid" :key="inv.id" class="hover:bg-green-50/50 transition-colors">
               <td class="p-4">
-                <div class="font-bold text-gray-800">{{ inv.tenants?.name }}</div>
+                <div class="font-bold text-gray-700">{{ inv.tenants?.name }}</div>
                 <div class="text-xs text-gray-400">{{ inv.units?.name }}</div>
               </td>
               <td class="p-4 text-gray-500 text-left" dir="ltr">
@@ -129,8 +121,6 @@ const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env
 const stats = ref({
   collected: 0,
   pending: 0,
-  expenses: 0,
-  netProfit: 0,
   totalUnits: 0,
   occupiedUnits: 0,
   occupancyRate: 0,
@@ -147,14 +137,9 @@ const isOverdue = (dateString) => {
 }
 
 const loadStats = async () => {
-  console.log('بدء تحديث البيانات...') // للتأكد من تشغيل الدالة
+  console.log('بدء تحديث البيانات...') 
 
-  // 1. المصروفات
-  const { data: expensesData } = await supabase.from('expenses').select('amount')
-  const totalExpenses = expensesData ? expensesData.reduce((sum, e) => sum + Number(e.amount || 0), 0) : 0
-  stats.value.expenses = totalExpenses
-
-  // 2. الوحدات
+  // 1. الوحدات
   const { data: units } = await supabase.from('units').select('status')
   if (units) {
     stats.value.totalUnits = units.length
@@ -162,7 +147,7 @@ const loadStats = async () => {
     stats.value.occupancyRate = units.length ? Math.round((stats.value.occupiedUnits / units.length) * 100) : 0
   }
 
-  // 3. الفواتير - استخدام (*) لضمان جلب كل شيء مثل صفحة المالية
+  // 2. الفواتير
   const { data: invoices, error } = await supabase
     .from('invoices')
     .select(`*, tenants(name), units(name)`)
@@ -172,7 +157,7 @@ const loadStats = async () => {
   }
 
   if (invoices) {
-    console.log(`تم جلب ${invoices.length} فاتورة`) // للتأكد في الكونسول
+    console.log(`تم جلب ${invoices.length} فاتورة`)
 
     const today = new Date()
     today.setHours(0,0,0,0)
@@ -185,7 +170,6 @@ const loadStats = async () => {
     // أ. المحصل (كل ما تم دفعه)
     const collectedTotal = invoices.reduce((sum, i) => sum + (Number(i.paid_amount) || 0), 0)
     stats.value.collected = collectedTotal
-    stats.value.netProfit = collectedTotal - totalExpenses
 
     // ب. المتبقي (الديون) - نستثني المستقبلية البعيدة (أكثر من شهرين)
     stats.value.pending = invoices.reduce((sum, i) => {
@@ -200,7 +184,6 @@ const loadStats = async () => {
     }, 0)
     
     // --- الجدول الأيمن: آخر عمليات الدفع ---
-    // الشرط: أي مبلغ مدفوع > 0
     recentPaid.value = invoices
       .filter(i => (Number(i.paid_amount) || 0) > 0)
       .sort((a, b) => {
@@ -224,7 +207,7 @@ const loadStats = async () => {
       .slice(0, 6)
   }
 
-  // 4. عدد المستأجرين
+  // 3. عدد المستأجرين
   const { count } = await supabase.from('tenants').select('*', { count: 'exact', head: true })
   stats.value.tenantsCount = count || 0
 }

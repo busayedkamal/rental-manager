@@ -56,8 +56,27 @@ const logout = async () => {
 </script>
 
 <style>
+/* 👇 إعدادات الخطوط العامة */
+:root {
+  --font-heading: 'Cairo', sans-serif;
+  --font-body: 'Tajwal', sans-serif;
+}
+
+body {
+  font-family: var(--font-body);
+  font-weight: 400;
+  line-height: 1.6; /* تحسين القراءة للنصوص العربية */
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading) !important;
+  font-weight: 700;
+}
+
+/* 👇 التنسيقات القديمة */
 .nav-item {
   @apply block px-4 py-3 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-all duration-200 font-medium;
+  font-family: var(--font-body); /* تأكيد الخط للقائمة */
 }
 .active {
   @apply bg-indigo-600 text-white shadow-lg;

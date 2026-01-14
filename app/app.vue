@@ -1,6 +1,5 @@
 <template>
-  <div v-if="!isPublicPage" class="min-h-screen bg-gray-100 font-sans flex" dir="rtl">
-    
+<div v-if="!isPublicPage" class="min-h-screen bg-gray-100 font-sans flex" dir="rtl">    
     <aside class="w-64 bg-slate-900 text-white flex flex-col shadow-xl sticky top-0 h-screen">
       <div class="p-6 text-center border-b border-slate-700">
         <h1 class="text-2xl font-bold text-white">مدير العقارات 🏢</h1>

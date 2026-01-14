@@ -132,14 +132,17 @@
                 <button v-if="canEdit" @click="undoPayment(inv)" class="text-xs text-red-500 hover:bg-red-50 px-2 py-1 rounded border border-red-200 transition" title="إلغاء الدفع">↩️ تراجع</button>
               </div>
               
-              <button v-if="inv.status === 'مدفوع جزئياً' && canEdit" @click="undoPayment(inv)" class="mt-2 text-[10px] text-red-500 underline hover:text-red-700 block mx-auto">إلغاء المدفوع</button>
+              <button @click="undoPayment(inv)" class="text-xs text-red-500 hover:bg-red-50 px-2 py-1 rounded border border-red-200 transition" title="إلغاء الدفع">↩️ تراجع</button>
             </td>
 
             <td class="px-6 py-4 text-center">
               <div class="flex justify-center gap-2">
                 <button @click="openInvoicePrint(inv)" class="text-gray-500 hover:text-indigo-600 p-2 rounded-full hover:bg-indigo-50 transition" title="طباعة الفاتورة">🖨️</button>
-                <button v-if="canEdit" @click="openEditModal(inv)" class="text-gray-400 hover:text-blue-600 p-2 rounded-full hover:bg-gray-100" title="تعديل">✏️</button>
-                <button @click="deleteInvoice(inv.id)" class="text-gray-400 hover:text-red-600 p-2 rounded-full hover:bg-gray-100" title="حذف">🗑️</button>              </div>
+                
+                <button @click="openEditModal(inv)" class="text-gray-400 hover:text-blue-600 p-2 rounded-full hover:bg-gray-100" title="تعديل">✏️</button>
+                
+                <button @click="deleteInvoice(inv.id)" class="text-gray-400 hover:text-red-600 p-2 rounded-full hover:bg-gray-100" title="حذف">🗑️</button>
+              </div>
             </td>
           </tr>
           <tr v-if="sortedInvoices.length === 0">

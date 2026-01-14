@@ -1,5 +1,6 @@
 <template>
-<div v-if="!isPublicPage" class="min-h-screen bg-gray-100 font-sans flex" dir="rtl">    
+  <div v-if="!isPublicPage" class="min-h-screen bg-gray-100 flex" dir="rtl">
+    
     <aside class="w-64 bg-slate-900 text-white flex flex-col shadow-xl sticky top-0 h-screen">
       <div class="p-6 text-center border-b border-slate-700">
         <h1 class="text-2xl font-bold text-white">مدير العقارات 🏢</h1>
@@ -42,7 +43,6 @@ const route = useRoute()
 
 // تحديد هل الصفحة الحالية عامة أم خاصة
 const isPublicPage = computed(() => {
-  // القائمة السوداء للصفحات التي لا نريد فيها القائمة الجانبية
   return ['/', '/login'].includes(route.path) || route.path.startsWith('/portal')
 })
 
@@ -55,27 +55,21 @@ const logout = async () => {
 </script>
 
 <style>
-/* 👇 إعدادات الخطوط العامة */
-:root {
-  --font-heading: 'Cairo', sans-serif;
-  --font-body: 'Tajwal', sans-serif;
-}
+/* ✅ تطبيق الخطوط باستخدام إعدادات Tailwind مباشرة */
 
+/* تطبيق خط النصوص (Tajwal) على كامل الموقع */
 body {
-  font-family: var(--font-body);
-  font-weight: 400;
-  line-height: 1.6; /* تحسين القراءة للنصوص العربية */
+  @apply font-sans text-gray-900 antialiased leading-relaxed;
 }
 
+/* تطبيق خط العناوين (Cairo) على جميع العناوين تلقائياً */
 h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-heading) !important;
-  font-weight: 700;
+  @apply font-heading font-bold;
 }
 
-/* 👇 التنسيقات القديمة */
+/* 👇 التنسيقات الأخرى */
 .nav-item {
   @apply block px-4 py-3 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-all duration-200 font-medium;
-  font-family: var(--font-body); /* تأكيد الخط للقائمة */
 }
 .active {
   @apply bg-indigo-600 text-white shadow-lg;

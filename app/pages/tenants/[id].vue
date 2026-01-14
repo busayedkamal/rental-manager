@@ -54,11 +54,11 @@
             <div class="bg-blue-50 p-3 rounded-lg mt-4 space-y-2 border border-blue-100">
               <div class="flex items-center gap-2 text-blue-800">
                 <span>⚡ عداد الكهرباء:</span>
-                <span class="font-bold font-mono">{{ activeContract.units?.electricity_meter || 'غير مسجل' }}</span>
+                <span class="font-bold font-sans">{{ activeContract.units?.electricity_meter || 'غير مسجل' }}</span>
               </div>
               <div class="flex items-center gap-2 text-blue-800">
                 <span>💧 عداد الماء:</span>
-                <span class="font-bold font-mono">{{ activeContract.units?.water_meter || 'غير مسجل' }}</span>
+                <span class="font-bold font-sans">{{ activeContract.units?.water_meter || 'غير مسجل' }}</span>
               </div>
             </div>
           </div>
@@ -101,7 +101,7 @@
             </thead>
             <tbody class="divide-y divide-gray-100">
               <tr v-for="inv in invoices" :key="inv.id" class="hover:bg-gray-50 group">
-                <td class="p-3 font-mono text-gray-600">{{ inv.due_date }}</td>
+                <td class="p-3 font-sans text-gray-600">{{ inv.due_date }}</td>
                 <td class="p-3 font-bold">{{ formatMoney(inv.amount) }}</td>
                 <td class="p-3 text-green-600 font-bold">
                   <span v-if="inv.paid_amount > 0">✅ {{ formatMoney(inv.paid_amount) }}</span>
@@ -116,7 +116,7 @@
                   </div>
                   
                   <div v-else class="flex items-center justify-between gap-2">
-                    <span v-if="inv.payment_date" class="bg-gray-100 text-gray-600 font-mono text-xs px-2 py-1 rounded border">
+                    <span v-if="inv.payment_date" class="bg-gray-100 text-gray-600 font-sans text-xs px-2 py-1 rounded border">
                       {{ inv.payment_date }}
                     </span>
                     <span v-else class="text-gray-300 text-xs">-</span>

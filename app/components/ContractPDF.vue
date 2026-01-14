@@ -17,7 +17,7 @@
         <div class="text-center border-b-2 border-black pb-6 mb-8">
           <h1 class="text-3xl font-bold mb-2">عقد إيجار وحدة عقارية</h1>
           <p class="text-gray-500">Rental Lease Agreement</p>
-          <p class="mt-2 font-mono text-sm">رقم العقد: CNT-{{ contract.id }}</p>
+          <p class="mt-2 font-sans text-sm">رقم العقد: CNT-{{ contract.id }}</p>
         </div>
 
         <div class="mb-8 space-y-4">
@@ -44,7 +44,7 @@
               <tr v-for="cu in contract.contract_units" :key="cu.id">
                 <td class="p-2 border-l border-black border-t border-black">{{ cu.units?.name }}</td>
                 <td class="p-2 border-l border-black border-t border-black">{{ cu.units?.type }}</td>
-                <td class="p-2 border-t border-black font-mono">{{ cu.units?.electricity_meter || '---' }}</td>
+                <td class="p-2 border-t border-black font-sans">{{ cu.units?.electricity_meter || '---' }}</td>
               </tr>
             </tbody>
           </table>

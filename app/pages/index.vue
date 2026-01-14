@@ -59,7 +59,7 @@
                 v-model="phone" 
                 type="tel" 
                 placeholder="مثال: 0500000000" 
-                class="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-left font-mono text-lg transition"
+                class="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-left font-sans text-lg transition"
                 required
               />
             </div>

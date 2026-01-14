@@ -55,7 +55,7 @@
           <tr v-for="exp in expenses" :key="exp.id" class="hover:bg-red-50/30">
             <td class="px-6 py-4 font-bold text-gray-800">{{ exp.title }}</td>
             <td class="px-6 py-4"><span class="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">{{ exp.category }}</span></td>
-            <td class="px-6 py-4 text-gray-500 text-sm font-mono">{{ exp.expense_date }}</td>
+            <td class="px-6 py-4 text-gray-500 text-sm font-sans">{{ exp.expense_date }}</td>
             <td class="px-6 py-4 font-bold text-red-600 dir-ltr text-right">- {{ Number(exp.amount).toLocaleString() }}</td>
             <td class="px-6 py-4 text-center">
               <button @click="deleteExpense(exp.id)" class="text-gray-400 hover:text-red-600">🗑️</button>

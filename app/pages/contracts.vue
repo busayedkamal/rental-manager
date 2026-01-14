@@ -79,7 +79,7 @@
                 </span>
               </div>
             </td>
-            <td class="px-6 py-4 text-sm text-gray-500 font-mono">{{ c.start_date }} <br> ⬇ <br> {{ c.end_date }}</td>
+            <td class="px-6 py-4 text-sm text-gray-500 font-sans">{{ c.start_date }} <br> ⬇ <br> {{ c.end_date }}</td>
             <td class="px-6 py-4 text-green-600 font-bold text-lg">{{ Number(c.amount).toLocaleString() }}</td>
             <td class="px-6 py-4 flex justify-center gap-2">
               

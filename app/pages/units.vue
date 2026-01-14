@@ -121,7 +121,7 @@
             <span v-if="unit.status === 'مؤجرة'" class="text-[10px] text-indigo-400">↗</span>
           </h3>
           
-          <p class="text-xs text-gray-500 font-mono mb-3 bg-gray-50 inline-block px-2 py-1 rounded">
+          <p class="text-xs text-gray-500 font-sans mb-3 bg-gray-50 inline-block px-2 py-1 rounded">
             {{ Number(unit.price).toLocaleString() }} ريال
           </p>
 

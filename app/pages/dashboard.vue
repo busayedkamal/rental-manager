@@ -89,7 +89,7 @@
               </td>
               <td class="p-4">
                 <div class="flex flex-col gap-1">
-                  <span class="font-mono text-gray-700 font-bold">{{ inv.due_date }}</span>
+                  <span class="font-sans text-gray-700 font-bold">{{ inv.due_date }}</span>
                   <span v-if="isOverdue(inv.due_date)" class="w-fit text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold">متأخر</span>
                   <span v-else class="w-fit text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold">مستحق قريباً</span>
                 </div>

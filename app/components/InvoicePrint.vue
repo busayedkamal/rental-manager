@@ -51,15 +51,15 @@
           </div>
           <div class="space-y-2 text-left" dir="ltr">
             <div class="flex justify-end gap-4">
-              <span class="font-bold font-mono">INV-{{ invoice?.id?.split('-')[0].toUpperCase() }}</span>
+              <span class="font-bold font-sans">INV-{{ invoice?.id?.split('-')[0].toUpperCase() }}</span>
               <span class="text-gray-500">:رقم الفاتورة</span>
             </div>
             <div class="flex justify-end gap-4">
-              <span class="font-mono">{{ new Date().toISOString().split('T')[0] }}</span>
+              <span class="font-sans">{{ new Date().toISOString().split('T')[0] }}</span>
               <span class="text-gray-500">:تاريخ الإصدار</span>
             </div>
             <div class="flex justify-end gap-4">
-              <span class="font-mono">{{ invoice?.due_date }}</span>
+              <span class="font-sans">{{ invoice?.due_date }}</span>
               <span class="text-gray-500">:تاريخ الاستحقاق</span>
             </div>
           </div>

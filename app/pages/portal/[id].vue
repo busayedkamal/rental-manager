@@ -80,11 +80,11 @@
               </div>
               <div class="flex justify-between">
                 <span class="text-gray-500">بداية العقد:</span>
-                <span dir="ltr" class="font-mono text-gray-700">{{ activeContract.start_date }}</span>
+                <span dir="ltr" class="font-sans text-gray-700">{{ activeContract.start_date }}</span>
               </div>
               <div class="flex justify-between">
                 <span class="text-gray-500">نهاية العقد:</span>
-                <span dir="ltr" class="font-mono text-gray-700">{{ activeContract.end_date }}</span>
+                <span dir="ltr" class="font-sans text-gray-700">{{ activeContract.end_date }}</span>
               </div>
               <div class="flex justify-between items-center pt-2 border-t mt-2">
                 <span class="text-gray-500">قيمة العقد:</span>
@@ -134,7 +134,7 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                   <tr v-for="inv in invoices" :key="inv.id" class="hover:bg-indigo-50/30 transition-colors">
-                    <td class="p-4 font-mono text-gray-600" :class="{'text-red-600 font-bold': isOverdue(inv)}">
+                    <td class="p-4 font-sans text-gray-600" :class="{'text-red-600 font-bold': isOverdue(inv)}">
                       {{ inv.due_date }}
                     </td>
                     <td class="p-4 font-bold text-gray-800">{{ formatMoney(inv.amount) }}</td>
@@ -152,7 +152,7 @@
                     <td class="p-4 text-gray-500">
                       <div v-if="inv.paid_amount > 0">
                         <span class="text-green-600 font-bold block">{{ formatMoney(inv.paid_amount) }}</span>
-                        <span v-if="inv.payment_date" class="text-[10px] text-gray-400 font-mono">{{ inv.payment_date }}</span>
+                        <span v-if="inv.payment_date" class="text-[10px] text-gray-400 font-sans">{{ inv.payment_date }}</span>
                       </div>
                       <div v-else class="text-gray-300">-</div>
                     </td>

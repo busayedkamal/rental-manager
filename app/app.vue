@@ -1,5 +1,5 @@
 <template>
-  <div v-if="!isPublicPage" class="min-h-screen bg-gray-100 flex" dir="rtl">
+  <div v-if="!isPublicPage" class="min-h-screen bg-gray-100 font-sans flex" dir="rtl">
     
     <aside class="w-64 bg-slate-900 text-white flex flex-col shadow-xl sticky top-0 h-screen">
       <div class="p-6 text-center border-b border-slate-700">
@@ -12,7 +12,10 @@
         <NuxtLink to="/tenants" class="nav-item" active-class="active">👥 المستأجرين</NuxtLink>
         <NuxtLink to="/units" class="nav-item" active-class="active">🏢 الوحدات العقارية</NuxtLink>
         <NuxtLink to="/contracts" class="nav-item" active-class="active">📝 العقود والإيجارات</NuxtLink>
-        <NuxtLink to="/finance" class="nav-item" active-class="active">💰 المالية والتحصيل</NuxtLink>
+        
+        <div class="pt-4 pb-2 text-xs text-slate-500 font-bold px-2">الإدارة المالية</div>
+        <NuxtLink to="/finance" class="nav-item" active-class="active">💰 الاستحقاقات (الفواتير)</NuxtLink>
+        <NuxtLink to="/collections" class="nav-item" active-class="active">💸 سجل التحصيل (الفعلي)</NuxtLink>
       </nav>
 
       <div class="p-4 border-t border-slate-700">
@@ -55,21 +58,26 @@ const logout = async () => {
 </script>
 
 <style>
-/* ✅ تطبيق الخطوط باستخدام إعدادات Tailwind مباشرة */
+/* 👇 إعدادات الخطوط العامة */
+:root {
+  --font-heading: 'Cairo', sans-serif;
+  --font-body: 'Tajwal', sans-serif;
+}
 
-/* تطبيق خط النصوص (Tajwal) على كامل الموقع */
 body {
-  @apply font-sans text-gray-900 antialiased leading-relaxed;
+  font-family: var(--font-body);
+  font-weight: 400;
+  line-height: 1.6;
 }
 
-/* تطبيق خط العناوين (Cairo) على جميع العناوين تلقائياً */
 h1, h2, h3, h4, h5, h6 {
-  @apply font-heading font-bold;
+  font-family: var(--font-heading) !important;
+  font-weight: 700;
 }
 
-/* 👇 التنسيقات الأخرى */
 .nav-item {
   @apply block px-4 py-3 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-all duration-200 font-medium;
+  font-family: var(--font-body);
 }
 .active {
   @apply bg-indigo-600 text-white shadow-lg;

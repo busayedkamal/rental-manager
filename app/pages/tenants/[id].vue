@@ -167,29 +167,38 @@ const tenant = ref({})
 const activeContract = ref(null)
 const invoices = ref([])
 
-// متغيرات التعديل الجديدة 👇
 const editingDateId = ref(null)
 const tempDate = ref('')
 
 const formatMoney = (val) => Number(val).toLocaleString()
 
-// حسابات المحفظة
+// 👇 حسابات الفواتير فقط (المجاميع في أسفل الجدول)
 const totals = computed(() => {
   const required = invoices.value.reduce((sum, inv) => sum + Number(inv.amount || 0), 0)
   const paid = invoices.value.reduce((sum, inv) => sum + Number(inv.paid_amount || 0), 0)
   return { required, paid }
 })
 
-const walletBalance = computed(() => totals.value.paid - totals.value.required)
+// 👇 التعديل هنا: حساب رصيد المحفظة الصحيح
+const walletBalance = computed(() => {
+  // 1. الرصيد الدائن (الفائض المسجل في جدول المستأجر)
+  const tenantCredit = Number(tenant.value.balance || 0)
+
+  // 2. الديون المتبقية (المطلوب - المدفوع في الفواتير)
+  const outstandingDebt = totals.value.required - totals.value.paid
+
+  // 3. صافي المحفظة = الفائض - الديون
+  return tenantCredit - outstandingDebt
+})
 
 const loadData = async () => {
   const id = route.params.id
   
-  // 1. بيانات المستأجر
+  // جلب بيانات المستأجر (بما فيها الرصيد balance)
   const { data: t } = await supabase.from('tenants').select('*').eq('id', id).single()
   tenant.value = t
 
-  // 2. العقد النشط
+  // العقد النشط
   const { data: c } = await supabase
     .from('contracts')
     .select('*, units(*)') 
@@ -199,7 +208,7 @@ const loadData = async () => {
   
   if (c && c.length > 0) activeContract.value = c[0]
 
-  // 3. الفواتير
+  // الفواتير
   const { data: inv } = await supabase
     .from('invoices')
     .select('*')
@@ -210,14 +219,13 @@ const loadData = async () => {
   loading.value = false
 }
 
-// 👇 دوال تعديل التاريخ الجديدة
 const enableDateEdit = (inv) => {
   editingDateId.value = inv.id
-  tempDate.value = inv.payment_date || new Date().toISOString().split('T')[0] // التاريخ الحالي افتراضياً
+  tempDate.value = inv.payment_date || new Date().toISOString().split('T')[0]
 }
 
 const savePaymentDate = async (id) => {
-  if (!tempDate.value) return // منع الحفظ إذا كان فارغاً
+  if (!tempDate.value) return
   
   const { error } = await supabase
     .from('invoices')
@@ -227,7 +235,6 @@ const savePaymentDate = async (id) => {
   if (error) {
     alert('خطأ في التحديث: ' + error.message)
   } else {
-    // تحديث البيانات محلياً وإغلاق وضع التعديل
     await loadData()
     editingDateId.value = null
   }

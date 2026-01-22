@@ -63,7 +63,7 @@
               </div>
             </td>
             <td class="px-6 py-4 text-center">
-              <button @click="deletePayment(payment.id)" class="text-red-400 hover:text-red-600 p-2 rounded-full hover:bg-red-50" title="حذف السجل">🗑️</button>
+              <button @click="deletePayment(payment)" class="text-red-400 hover:text-red-600 p-2 rounded-full hover:bg-red-50" title="حذف السجل والتراجع عن التأثير المالي">🗑️</button>
             </td>
           </tr>
           <tr v-if="payments.length === 0">
@@ -114,12 +114,14 @@
                 v-model="form.amount_paid" 
                 type="number" 
                 step="0.01" 
-                :max="selectedContractStats?.remaining || 999999999"
                 class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-green-500 outline-none font-bold text-green-700"
                 placeholder="0.00" 
                 required 
               />
-              <p v-if="selectedContractStats && form.amount_paid > selectedContractStats.remaining" class="text-xs text-red-500 mt-1">⚠️ المبلغ أكبر من المتبقي!</p>
+              
+              <p v-if="selectedContractStats && form.amount_paid > selectedContractStats.remaining" class="text-xs text-blue-600 mt-1 font-bold bg-blue-50 p-1 rounded">
+                💡 يوجد فائض: {{ (form.amount_paid - selectedContractStats.remaining).toLocaleString() }} ريال سيضاف للرصيد
+              </p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">تاريخ التحصيل</label>
@@ -145,7 +147,7 @@
 
           <button 
             type="submit" 
-            :disabled="loading || (selectedContractStats && form.amount_paid > selectedContractStats.remaining)"
+            :disabled="loading"
             class="w-full bg-green-600 text-white py-3 rounded-xl font-bold hover:bg-green-700 shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {{ loading ? 'جاري الحفظ...' : 'تأكيد وحفظ الدفعة ✅' }}
@@ -164,56 +166,46 @@ import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_KEY)
 
-// البيانات
 const payments = ref([])
 const contracts = ref([])
 const showModal = ref(false)
 const loading = ref(false)
 
-// النموذج
 const form = ref({
   contract_id: '',
-  tenant_id: '', // سيتم تعبئته تلقائياً
+  tenant_id: '', 
   amount_paid: '',
   payment_date: new Date().toISOString().split('T')[0],
   payment_method: 'تحويل بنكي',
   notes: ''
 })
 
-// إحصائيات العقد المختار في المودال
 const selectedContractStats = ref(null)
 
-// 1. جلب البيانات
 const fetchData = async () => {
-  // جلب المدفوعات مع تفاصيل العقد والمستأجر
   const { data: pData } = await supabase
     .from('payments')
     .select(`*, contracts(id, amount), tenants(name)`)
     .order('created_at', { ascending: false })
   payments.value = pData || []
 
-  // جلب العقود السارية فقط للإضافة
   const { data: cData } = await supabase
     .from('contracts')
     .select(`*, tenants(id, name)`)
-    .eq('status', 'ساري') // افتراض وجود حالة للعقد
+    .eq('status', 'ساري') 
   contracts.value = cData || []
 }
 
-// 2. إجمالي التحصيل (للمؤشر العلوي)
 const totalCollected = computed(() => {
   return payments.value.reduce((sum, p) => sum + Number(p.amount_paid), 0)
 })
 
-// 3. عند اختيار عقد في المودال (حساب المتبقي لحظياً)
 const onContractSelect = () => {
   const contract = contracts.value.find(c => c.id === form.value.contract_id)
   if (!contract) return
 
-  // تعيين المستأجر تلقائياً
   form.value.tenant_id = contract.tenants.id
 
-  // حساب ما تم دفعه سابقاً لهذا العقد
   const previousPayments = payments.value
     .filter(p => p.contract_id === contract.id)
     .reduce((sum, p) => sum + Number(p.amount_paid), 0)
@@ -221,81 +213,166 @@ const onContractSelect = () => {
   selectedContractStats.value = {
     total: contract.amount,
     paid: previousPayments,
-    remaining: contract.amount - previousPayments
+    remaining: Math.max(0, contract.amount - previousPayments)
   }
 }
 
-// 4. حفظ الدفعة مع منطق الرصيد الذكي
 const submitPayment = async () => {
   loading.value = true
   try {
-    // 1. حساب المبالغ
     const contract = contracts.value.find(c => c.id === form.value.contract_id)
     const paidAmount = Number(form.value.amount_paid)
+    let remainingToAllocate = paidAmount 
     
-    // المتبقي الفعلي قبل هذه الدفعة
     const previousPaid = payments.value
       .filter(p => p.contract_id === form.value.contract_id)
       .reduce((sum, p) => sum + Number(p.amount_paid), 0)
-    const remaining = contract.amount - previousPaid
-
-    let balanceToAdd = 0
     
-    // 2. التحقق من وجود فائض (رصيد)
-    if (paidAmount > remaining) {
-      balanceToAdd = paidAmount - remaining
-      if(!confirm(`⚠️ تنبيه: المبلغ المدفوع (${paidAmount}) أكبر من المتبقي (${remaining}).\nسيتم إضافة الفارق (${balanceToAdd}) كرصيد للمستأجر. هل توافق؟`)) {
+    const remainingContract = contract.amount - previousPaid
+    let balanceToAdd = 0
+    let confirmMsg = '✅ تم تسجيل الدفعة وتحديث الفواتير بنجاح!'
+
+    if (paidAmount > remainingContract) {
+      balanceToAdd = paidAmount - remainingContract
+      if(!confirm(`⚠️ المبلغ المدفوع (${paidAmount}) أكبر من المتبقي في العقد (${remainingContract}).\n\nسيتم سداد جميع الفواتير، وإضافة الفارق (${balanceToAdd}) كرصيد للمستأجر.\n\nهل توافق؟`)) {
         loading.value = false
         return
       }
+      confirmMsg = `✅ تم السداد وإضافة ${balanceToAdd} ريال لرصيد المستأجر.`
     }
 
-    // 3. تسجيل الدفعة
+    // 1. تسجيل الدفعة
     const { error: payError } = await supabase.from('payments').insert([form.value])
     if (payError) throw payError
 
-    // 4. تحديث رصيد المستأجر إذا وجد فائض
+    // 2. تحديث الفواتير
+    const { data: unpaidInvoices } = await supabase
+      .from('invoices')
+      .select('*')
+      .eq('contract_id', form.value.contract_id)
+      .neq('status', 'مدفوع') 
+      .order('due_date', { ascending: true })
+
+    if (unpaidInvoices) {
+      for (const inv of unpaidInvoices) {
+        if (remainingToAllocate <= 0) break 
+
+        const alreadyPaid = inv.paid_amount || 0
+        const needed = inv.amount - alreadyPaid
+
+        if (remainingToAllocate >= needed) {
+          await supabase.from('invoices').update({
+            status: 'مدفوع',
+            paid_amount: inv.amount,
+            payment_date: form.value.payment_date,
+            payment_method: form.value.payment_method
+          }).eq('id', inv.id)
+          remainingToAllocate -= needed
+        } else {
+          await supabase.from('invoices').update({
+            status: 'مدفوع جزئياً',
+            paid_amount: alreadyPaid + remainingToAllocate,
+            payment_date: form.value.payment_date,
+            payment_method: form.value.payment_method
+          }).eq('id', inv.id)
+          remainingToAllocate = 0
+        }
+      }
+    }
+
+    // 3. تحديث الرصيد
     if (balanceToAdd > 0) {
-      // نجلب الرصيد الحالي أولاً
       const { data: tenant } = await supabase.from('tenants').select('balance').eq('id', form.value.tenant_id).single()
       const currentBalance = Number(tenant?.balance || 0)
       
-      // نضيف الرصيد الجديد
       await supabase.from('tenants').update({ 
         balance: currentBalance + balanceToAdd 
       }).eq('id', form.value.tenant_id)
-      
-      alert(`✅ تم تسجيل الدفعة وإضافة ${balanceToAdd} ريال لرصيد المستأجر.`)
-    } else {
-      alert('✅ تم تسجيل الدفعة بنجاح!')
     }
     
+    alert(confirmMsg)
     closeModal()
-    fetchData() // تحديث الجدول
+    fetchData() 
   } catch (e) {
     alert('خطأ: ' + e.message)
   } finally {
     loading.value = false
   }
 }
-// 5. حذف دفعة
-const deletePayment = async (id) => {
-  if(!confirm('هل أنت متأكد من حذف هذا السجل المالي؟ سيؤثر ذلك على حسابات العقد.')) return
-  await supabase.from('payments').delete().eq('id', id)
-  fetchData()
+
+// 👇 دالة الحذف الذكية (المعدلة: الفواتير أولاً ثم الرصيد)
+const deletePayment = async (payment) => {
+  if(!confirm(`⚠️ تحذير هام!\n\nأنت على وشك حذف دفعة بقيمة (${Number(payment.amount_paid).toLocaleString()}) ريال.\n\nسيقوم النظام بـ:\n1. إلغاء سداد الفواتير المرتبطة بهذه الدفعة أولاً.\n2. خصم أي مبلغ متبقي (الفائض) من رصيد المستأجر.\n\nهل أنت متأكد تماماً؟`)) return
+  
+  loading.value = true
+  try {
+    let amountToRevert = Number(payment.amount_paid) // المبلغ الذي نريد استرجاعه (مثلاً 15000)
+
+    // 1️⃣ الخطوة الأولى (الأهم): استرجاع المبلغ من الفواتير المدفوعة
+    // نجلب الفواتير التي تم الدفع فيها لهذا العقد
+    const { data: paidInvoices } = await supabase
+      .from('invoices')
+      .select('*')
+      .eq('contract_id', payment.contract_id)
+      .gt('paid_amount', 0) // فقط الفواتير التي دُفع فيها شيء
+      .order('due_date', { ascending: false }) // نبدأ بالأحدث
+
+    if (paidInvoices) {
+      for (const inv of paidInvoices) {
+        if (amountToRevert <= 0) break // انتهى المبلغ المطلوب استرجاعه
+
+        // كم يمكننا أن نخصم من هذه الفاتورة؟ (إما كل المدفوع فيها، أو المتبقي من مبلغنا)
+        const deduction = Math.min(inv.paid_amount, amountToRevert)
+        
+        const newPaid = inv.paid_amount - deduction
+        let newStatus = 'غير مدفوع'
+        if (newPaid > 0 && newPaid < inv.amount) newStatus = 'مدفوع جزئياً'
+        else if (newPaid >= inv.amount) newStatus = 'مدفوع' // حالة نادرة لو بقي مبلغ
+
+        // تحديث الفاتورة
+        await supabase.from('invoices').update({
+          paid_amount: newPaid,
+          status: newStatus,
+          // إذا أصبح المدفوع 0، نمسح بيانات الدفع
+          payment_date: newPaid === 0 ? null : inv.payment_date,
+          payment_method: newPaid === 0 ? null : inv.payment_method
+        }).eq('id', inv.id)
+
+        // نخصم ما استرجعناه من المبلغ الكلي
+        amountToRevert -= deduction
+      }
+    }
+
+    // 2️⃣ الخطوة الثانية: المبلغ المتبقي نخصمه من رصيد المستأجر (الفائض)
+    // إذا بقي مبلغ في amountToRevert (مثلاً 3000)، فهذا يعني أنه كان فائضاً وتمت إضافته للرصيد
+    if (amountToRevert > 0) {
+      const { data: tenant } = await supabase.from('tenants').select('balance').eq('id', payment.tenant_id).single()
+      const currentBalance = Number(tenant?.balance || 0)
+      
+      // نخصم المتبقي من الرصيد الحالي
+      await supabase.from('tenants').update({ 
+        balance: currentBalance - amountToRevert 
+      }).eq('id', payment.tenant_id)
+    }
+
+    // 3️⃣ الخطوة الثالثة: حذف سجل الدفعة من الجدول
+    const { error } = await supabase.from('payments').delete().eq('id', payment.id)
+    if (error) throw error
+
+    alert('✅ تم حذف الدفعة وتصحيح الحسابات (الفواتير والرصيد) بنجاح.')
+    fetchData()
+
+  } catch (e) {
+    alert('حدث خطأ أثناء الحذف: ' + e.message)
+  } finally {
+    loading.value = false
+  }
 }
 
-// دوال مساعدة للعرض في الجدول
 const calculateRemaining = (contractId) => {
-  // ملاحظة: في التطبيق الحقيقي يفضل حساب هذا في الباك اند أو تخزينه
-  // هنا نحسبه بناءً على البيانات المحملة
   const contract = contracts.value.find(c => c.id === contractId) || payments.value.find(p => p.contract_id === contractId)?.contracts
   if (!contract) return 0
-  
-  const totalPaid = payments.value
-    .filter(p => p.contract_id === contractId)
-    .reduce((sum, p) => sum + Number(p.amount_paid), 0)
-    
+  const totalPaid = payments.value.filter(p => p.contract_id === contractId).reduce((sum, p) => sum + Number(p.amount_paid), 0)
   return Math.max(0, contract.amount - totalPaid)
 }
 

@@ -1,7 +1,7 @@
 <template>
-  <div v-if="!isPublicPage" class="min-h-screen bg-gray-100 font-sans flex" dir="rtl">
+  <div v-if="!isPublicPage" class="min-h-screen bg-gray-50 font-sans flex" dir="rtl">
     
-    <aside class="w-64 bg-slate-900 text-white flex flex-col shadow-xl sticky top-0 h-screen">
+    <aside class="w-64 bg-slate-900 text-white flex flex-col shadow-xl sticky top-0 h-screen z-20">
       <div class="p-6 text-center border-b border-slate-700">
         <h1 class="text-2xl font-bold text-white">مدير العقارات 🏢</h1>
         <p class="text-slate-400 text-xs mt-1">لوحة التحكم (Admin)</p>
@@ -26,8 +26,28 @@
       </div>
     </aside>
 
-    <main class="flex-1 p-8 overflow-y-auto h-screen">
-      <NuxtPage />
+    <main class="flex-1 h-screen overflow-y-auto flex flex-col">
+      
+      <header class="bg-white border-b border-gray-200 px-8 py-4 flex justify-between items-center sticky top-0 z-10 shadow-sm">
+        <h2 class="text-xl font-bold text-gray-800">مرحباً بك 👋</h2>
+        
+        <div class="flex items-center gap-4">
+          <NotificationBell />
+          
+          <div class="h-8 w-[1px] bg-gray-300 mx-2"></div>
+          
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs border border-indigo-200">
+              M
+            </div>
+            <span class="text-sm font-bold text-gray-700">المدير العام</span>
+          </div>
+        </div>
+      </header>
+
+      <div class="p-8 flex-1">
+        <NuxtPage />
+      </div>
     </main>
   </div>
 
@@ -40,11 +60,12 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { createClient } from '@supabase/supabase-js'
+// استيراد مكون الجرس
+import NotificationBell from '~/components/NotificationBell.vue'
 
 const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_KEY)
 const route = useRoute()
 
-// تحديد هل الصفحة الحالية عامة أم خاصة
 const isPublicPage = computed(() => {
   return ['/', '/login'].includes(route.path) || route.path.startsWith('/portal')
 })
@@ -52,13 +73,12 @@ const isPublicPage = computed(() => {
 const logout = async () => {
   if (confirm('هل أنت متأكد من تسجيل الخروج؟')) {
     await supabase.auth.signOut()
-    window.location.href = '/' // الرجوع للصفحة الرئيسية
+    window.location.href = '/'
   }
 }
 </script>
 
 <style>
-/* 👇 إعدادات الخطوط العامة */
 :root {
   --font-heading: 'Cairo', sans-serif;
   --font-body: 'Tajwal', sans-serif;
@@ -76,7 +96,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .nav-item {
-  @apply block px-4 py-3 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-all duration-200 font-medium;
+  @apply block px-4 py-3 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-all duration-200 font-medium flex items-center gap-2;
   font-family: var(--font-body);
 }
 .active {

@@ -86,9 +86,11 @@
 
             <td class="px-6 py-4 text-center">
               <div v-if="inv.status !== 'مدفوع'">
-                <NuxtLink to="/collections" class="text-indigo-600 hover:text-indigo-800 text-xs font-bold hover:underline flex items-center justify-center gap-1 transition-all">
-                  <span>💸</span> اذهب للتحصيل
-                </NuxtLink>
+                <NuxtLink 
+                :to="{ path: '/collections', query: { contractId: inv.contract_id } }" 
+               class="text-indigo-600 hover:text-indigo-800 text-xs font-bold hover:underline flex items-center justify-center gap-1 transition-all">
+               <span>💸</span> اذهب للتحصيل
+               </NuxtLink>
               </div>
               <div v-else class="flex justify-center items-center gap-2">
                 <span class="text-green-500 text-xl">✅</span>

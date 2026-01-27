@@ -163,8 +163,10 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { createClient } from '@supabase/supabase-js'
+import { useRoute } from 'vue-router' // 1️⃣ استيراد الراوتر
 
 const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_KEY)
+const route = useRoute() // 2️⃣ تعريف الراوتر
 
 const payments = ref([])
 const contracts = ref([])
@@ -241,11 +243,9 @@ const submitPayment = async () => {
       confirmMsg = `✅ تم السداد وإضافة ${balanceToAdd} ريال لرصيد المستأجر.`
     }
 
-    // 1. تسجيل الدفعة
     const { error: payError } = await supabase.from('payments').insert([form.value])
     if (payError) throw payError
 
-    // 2. تحديث الفواتير
     const { data: unpaidInvoices } = await supabase
       .from('invoices')
       .select('*')
@@ -280,7 +280,6 @@ const submitPayment = async () => {
       }
     }
 
-    // 3. تحديث الرصيد
     if (balanceToAdd > 0) {
       const { data: tenant } = await supabase.from('tenants').select('balance').eq('id', form.value.tenant_id).single()
       const currentBalance = Number(tenant?.balance || 0)
@@ -300,62 +299,51 @@ const submitPayment = async () => {
   }
 }
 
-// 👇 دالة الحذف الذكية (المعدلة: الفواتير أولاً ثم الرصيد)
 const deletePayment = async (payment) => {
   if(!confirm(`⚠️ تحذير هام!\n\nأنت على وشك حذف دفعة بقيمة (${Number(payment.amount_paid).toLocaleString()}) ريال.\n\nسيقوم النظام بـ:\n1. إلغاء سداد الفواتير المرتبطة بهذه الدفعة أولاً.\n2. خصم أي مبلغ متبقي (الفائض) من رصيد المستأجر.\n\nهل أنت متأكد تماماً؟`)) return
   
   loading.value = true
   try {
-    let amountToRevert = Number(payment.amount_paid) // المبلغ الذي نريد استرجاعه (مثلاً 15000)
+    let amountToRevert = Number(payment.amount_paid)
 
-    // 1️⃣ الخطوة الأولى (الأهم): استرجاع المبلغ من الفواتير المدفوعة
-    // نجلب الفواتير التي تم الدفع فيها لهذا العقد
     const { data: paidInvoices } = await supabase
       .from('invoices')
       .select('*')
       .eq('contract_id', payment.contract_id)
-      .gt('paid_amount', 0) // فقط الفواتير التي دُفع فيها شيء
-      .order('due_date', { ascending: false }) // نبدأ بالأحدث
+      .gt('paid_amount', 0)
+      .order('due_date', { ascending: false })
 
     if (paidInvoices) {
       for (const inv of paidInvoices) {
-        if (amountToRevert <= 0) break // انتهى المبلغ المطلوب استرجاعه
+        if (amountToRevert <= 0) break
 
-        // كم يمكننا أن نخصم من هذه الفاتورة؟ (إما كل المدفوع فيها، أو المتبقي من مبلغنا)
         const deduction = Math.min(inv.paid_amount, amountToRevert)
         
         const newPaid = inv.paid_amount - deduction
         let newStatus = 'غير مدفوع'
         if (newPaid > 0 && newPaid < inv.amount) newStatus = 'مدفوع جزئياً'
-        else if (newPaid >= inv.amount) newStatus = 'مدفوع' // حالة نادرة لو بقي مبلغ
+        else if (newPaid >= inv.amount) newStatus = 'مدفوع'
 
-        // تحديث الفاتورة
         await supabase.from('invoices').update({
           paid_amount: newPaid,
           status: newStatus,
-          // إذا أصبح المدفوع 0، نمسح بيانات الدفع
           payment_date: newPaid === 0 ? null : inv.payment_date,
           payment_method: newPaid === 0 ? null : inv.payment_method
         }).eq('id', inv.id)
 
-        // نخصم ما استرجعناه من المبلغ الكلي
         amountToRevert -= deduction
       }
     }
 
-    // 2️⃣ الخطوة الثانية: المبلغ المتبقي نخصمه من رصيد المستأجر (الفائض)
-    // إذا بقي مبلغ في amountToRevert (مثلاً 3000)، فهذا يعني أنه كان فائضاً وتمت إضافته للرصيد
     if (amountToRevert > 0) {
       const { data: tenant } = await supabase.from('tenants').select('balance').eq('id', payment.tenant_id).single()
       const currentBalance = Number(tenant?.balance || 0)
       
-      // نخصم المتبقي من الرصيد الحالي
       await supabase.from('tenants').update({ 
         balance: currentBalance - amountToRevert 
       }).eq('id', payment.tenant_id)
     }
 
-    // 3️⃣ الخطوة الثالثة: حذف سجل الدفعة من الجدول
     const { error } = await supabase.from('payments').delete().eq('id', payment.id)
     if (error) throw error
 
@@ -390,5 +378,20 @@ const closeModal = () => {
   form.value = { contract_id: '', tenant_id: '', amount_paid: '', payment_date: new Date().toISOString().split('T')[0], payment_method: 'تحويل بنكي', notes: '' }
 }
 
-onMounted(() => fetchData())
+// 3️⃣ تم تحديث onMounted للتعامل مع الرابط القادم
+onMounted(async () => {
+  await fetchData() // انتظار تحميل البيانات
+  
+  // التحقق من الرابط
+  if (route.query.contractId) {
+    const targetId = route.query.contractId
+    const exists = contracts.value.find(c => c.id === targetId)
+    
+    if (exists) {
+      form.value.contract_id = targetId
+      onContractSelect() // تحديث الحسابات
+      showModal.value = true // فتح النافذة
+    }
+  }
+})
 </script>

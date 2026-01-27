@@ -112,7 +112,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { createClient } from '@supabase/supabase-js'
-import ContractPDF from '~/components/ContractPDF.vue' // ✅ استيراد مكون الطباعة
+import ContractPDF from '~/components/ContractPDF.vue'
 
 const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_KEY)
 const loading = ref(false)
@@ -123,7 +123,6 @@ const isEditing = ref(false)
 const editingId = ref(null)
 const originalUnitIds = ref([])
 
-// متغيرات الطباعة الجديدة
 const showContractModal = ref(false)
 const selectedContract = ref(null)
 
@@ -132,13 +131,12 @@ const form = ref({ tenant_id: '', selected_units: [], start_date: '', end_date: 
 const allUnitsForSelection = computed(() => units.value.filter(u => u.status === 'شاغرة' || originalUnitIds.value.includes(u.id)))
 
 const fetchData = async () => {
-  const { data: t } = await supabase.from('tenants').select('id, name, phone, email') // جلبنا الإيميل والجوال للطباعة
+  const { data: t } = await supabase.from('tenants').select('id, name, phone, email')
   tenants.value = t || []
   
-  const { data: u } = await supabase.from('units').select('id, name, type, price, status, electricity_meter') // جلبنا العداد للطباعة
+  const { data: u } = await supabase.from('units').select('id, name, type, price, status, electricity_meter')
   units.value = u || []
   
-  // جلب العقود مع التفاصيل الكاملة للطباعة
   const { data: c } = await supabase.from('contracts').select(`
     *, 
     tenants (name, phone, email), 
@@ -150,7 +148,6 @@ const fetchData = async () => {
   contracts.value = c || []
 }
 
-// ✅ دالة فتح نافذة العقد
 const openContractPDF = (c) => {
   selectedContract.value = c
   showContractModal.value = true
@@ -176,8 +173,6 @@ const renewContract = async (oldContract) => {
     }]).select().single()
     if (cErr) throw cErr
 
-    // نسخ الوحدات
-    // ملاحظة: تأكدنا في fetchData من جلب contract_units بشكل صحيح
     if (oldContract.contract_units && oldContract.contract_units.length > 0) {
       const links = oldContract.contract_units.map(cu => ({ 
         contract_id: newContract.id, 
@@ -187,19 +182,29 @@ const renewContract = async (oldContract) => {
     }
 
     const parts = 2 
-    const perInv = Number(oldContract.amount) / parts
+    const totalAmount = Number(oldContract.amount)
+    
+    // 👇 حساب دقيق للفواتير للتجديد (نفس المنطق الجديد)
+    const baseAmount = Math.floor(totalAmount / parts) // القيمة الصحيحة للدفعة
+    const remainder = totalAmount % parts // الباقي
+    
     let d = new Date(newStart)
     const invs = []
+    
     for (let i = 0; i < parts; i++) {
+      // نضيف الباقي كله للدفعة الأخيرة
+      const currentAmount = (i === parts - 1) ? (baseAmount + remainder) : baseAmount
+      
       invs.push({
         contract_id: newContract.id,
         tenant_id: oldContract.tenant_id,
         due_date: d.toISOString().split('T')[0],
-        amount: perInv,
+        amount: currentAmount,
         status: 'غير مدفوع'
       })
       d.setMonth(d.getMonth() + (12 / parts))
     }
+    
     await supabase.from('invoices').insert(invs)
 
     alert('✅ تم تجديد العقد بنجاح!')
@@ -230,8 +235,32 @@ const saveContract = async () => {
       await supabase.from('contract_units').insert(links)
       await supabase.from('units').update({ status: 'مؤجرة' }).in('id', form.value.selected_units)
       
-      const totalAmount = Number(form.value.amount); const parts = Number(form.value.frequency); const perInv = totalAmount / parts; let d = new Date(form.value.start_date); const invs = []
-      for (let i = 0; i < parts; i++) { invs.push({ contract_id: contract.id, tenant_id: form.value.tenant_id, due_date: d.toISOString().split('T')[0], amount: perInv, status: 'غير مدفوع' }); d.setMonth(d.getMonth() + (12 / parts)) }
+      // 👇👇 تعديل الحسابات الدقيقة للفواتير 👇👇
+      const totalAmount = Number(form.value.amount)
+      const parts = Number(form.value.frequency)
+      
+      const baseAmount = Math.floor(totalAmount / parts) // القيمة الصحيحة بدون كسور
+      const remainder = totalAmount % parts // الباقي (الهللات أو الريالات)
+      
+      let d = new Date(form.value.start_date)
+      const invs = []
+      
+      for (let i = 0; i < parts; i++) {
+        // إذا كانت الدفعة الأخيرة، نضيف عليها الباقي لضمان تطابق المجموع
+        const currentAmount = (i === parts - 1) ? (baseAmount + remainder) : baseAmount
+        
+        invs.push({ 
+          contract_id: contract.id, 
+          tenant_id: form.value.tenant_id, 
+          due_date: d.toISOString().split('T')[0], 
+          amount: currentAmount, 
+          status: 'غير مدفوع' 
+        })
+        
+        d.setMonth(d.getMonth() + (12 / parts)) 
+      }
+      // 👆👆 نهاية التعديل 👆👆
+
       await supabase.from('invoices').insert(invs)
       alert('تم التوقيع!')
     }

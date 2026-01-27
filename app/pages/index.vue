@@ -49,7 +49,7 @@
               📱
             </div>
             <h3 class="text-2xl font-bold">مستأجر حالي؟</h3>
-            <p class="text-gray-500 text-sm">أدخل رقم جوالك المسجل للدخول إلى لوحتك</p>
+            <p class="text-gray-500 text-sm">سجل دخولك برقم الجوال والرمز السري</p>
           </div>
 
           <form @submit.prevent="handleTenantLogin" class="space-y-4">
@@ -65,16 +65,29 @@
               />
             </div>
 
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">رمز الدخول (PIN)</label>
+              <input 
+                v-model="loginPin" 
+                type="password" 
+                placeholder="****" 
+                maxlength="6"
+                class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-center tracking-widest text-lg focus:ring-2 focus:ring-indigo-500 outline-none transition font-bold"
+                dir="ltr"
+                required
+              />
+            </div>
+
             <button 
               type="submit" 
               :disabled="loginLoading"
               class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition flex justify-center items-center gap-2 shadow-lg hover:shadow-indigo-500/30"
             >
-              <span v-if="loginLoading">جاري البحث...</span>
+              <span v-if="loginLoading">جاري التحقق...</span>
               <span v-else>🚀 دخول إلى لوحتي</span>
             </button>
 
-            <p v-if="loginError" class="text-red-500 text-sm text-center font-bold bg-red-50 py-2 rounded-lg">
+            <p v-if="loginError" class="text-red-500 text-sm text-center font-bold bg-red-50 py-2 rounded-lg animate-pulse">
               {{ loginError }}
             </p>
           </form>
@@ -163,70 +176,22 @@
 
     <section id="features" class="py-20 bg-gray-50 text-center">
       <div class="container mx-auto px-4">
-        
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          <div class="flex flex-col items-center">
-            <div class="text-6xl text-teal-800 mb-4">🏅</div>
-            <h3 class="text-2xl font-bold text-teal-900 mb-3">كفاءة</h3>
-            <p class="text-gray-500 text-sm leading-relaxed max-w-xs">نولي أهمية قصوى لحفظ سرية معلوماتك وحماية مصالحك بأعلى معايير الأمان.</p>
-          </div>
-          <div class="flex flex-col items-center">
-            <div class="text-6xl text-teal-800 mb-4">⏱️</div>
-            <h3 class="text-2xl font-bold text-teal-900 mb-3">بساطة</h3>
-            <p class="text-gray-500 text-sm leading-relaxed max-w-xs">سلاسة وسهولة الاستخدام لخدماتنا الإلكترونية، كل الأدوات التي تحتاجها في مكان واحد.</p>
-          </div>
-          <div class="flex flex-col items-center">
-            <div class="text-6xl text-teal-800 mb-4">🗺️</div>
-            <h3 class="text-2xl font-bold text-teal-900 mb-3">سهولة الوصول</h3>
-            <p class="text-gray-500 text-sm leading-relaxed max-w-xs">منصة إلكترونية مبتكرة تتيح لك سهولة الوصول ومتابعة عقاراتك من أي مكان.</p>
-          </div>
-          <div class="flex flex-col items-center">
-            <div class="text-6xl text-teal-800 mb-4">💬</div>
-            <h3 class="text-2xl font-bold text-teal-900 mb-3">الدعم</h3>
-            <p class="text-gray-500 text-sm leading-relaxed max-w-xs">فريق دعم العملاء متاح دائماً للرد على استفساراتك ومساعدتك في كل مرحلة.</p>
-          </div>
+          <div class="flex flex-col items-center"><div class="text-6xl text-teal-800 mb-4">🏅</div><h3 class="text-2xl font-bold text-teal-900 mb-3">كفاءة</h3><p class="text-gray-500 text-sm leading-relaxed max-w-xs">نولي أهمية قصوى لحفظ سرية معلوماتك وحماية مصالحك بأعلى معايير الأمان.</p></div>
+          <div class="flex flex-col items-center"><div class="text-6xl text-teal-800 mb-4">⏱️</div><h3 class="text-2xl font-bold text-teal-900 mb-3">بساطة</h3><p class="text-gray-500 text-sm leading-relaxed max-w-xs">سلاسة وسهولة الاستخدام لخدماتنا الإلكترونية، كل الأدوات التي تحتاجها في مكان واحد.</p></div>
+          <div class="flex flex-col items-center"><div class="text-6xl text-teal-800 mb-4">🗺️</div><h3 class="text-2xl font-bold text-teal-900 mb-3">سهولة الوصول</h3><p class="text-gray-500 text-sm leading-relaxed max-w-xs">منصة إلكترونية مبتكرة تتيح لك سهولة الوصول ومتابعة عقاراتك من أي مكان.</p></div>
+          <div class="flex flex-col items-center"><div class="text-6xl text-teal-800 mb-4">💬</div><h3 class="text-2xl font-bold text-teal-900 mb-3">الدعم</h3><p class="text-gray-500 text-sm leading-relaxed max-w-xs">فريق دعم العملاء متاح دائماً للرد على استفساراتك ومساعدتك في كل مرحلة.</p></div>
         </div>
       </div>
     </section>
 
     <footer class="bg-slate-900 text-white py-12 mt-auto">
       <div class="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-right">
-        
-        <div>
-          <div class="flex items-center gap-2 justify-center md:justify-start mb-4">
-            <span class="text-3xl">🏢</span>
-            <h3 class="text-xl font-bold">مدير العقارات</h3>
-          </div>
-          <p class="text-slate-400 text-sm leading-relaxed">
-            منصة متكاملة لإدارة الأملاك العقارية، تهدف لتسهيل عملية التأجير والتحصيل للملاك والمستأجرين بكل كفاءة وشفافية.
-          </p>
-        </div>
-
-        <div>
-          <h4 class="font-bold text-lg mb-4 text-indigo-400">تواصل معنا</h4>
-          <div class="space-y-3">
-            <a href="tel:0505933925" class="block text-slate-300 hover:text-white transition flex items-center justify-center md:justify-start gap-2">
-              <span>📞</span> 0505933925
-            </a>
-            <a href="https://wa.me/966505933925" target="_blank" class="block text-slate-300 hover:text-white transition flex items-center justify-center md:justify-start gap-2">
-              <span>💬</span> واتساب مباشر
-            </a>
-          </div>
-        </div>
-
-        <div>
-          <h4 class="font-bold text-lg mb-4 text-indigo-400">الموقع</h4>
-          <p class="text-slate-400 text-sm mb-4">يمكنك الوصول لموقع العقار مباشرة عبر الخرائط:</p>
-          <a href="https://maps.app.goo.gl/2wK7b9rdcZTCmfAa9" target="_blank" class="inline-block bg-slate-800 border border-slate-700 hover:bg-slate-700 text-white py-2 px-4 rounded-lg transition flex items-center justify-center gap-2 mx-auto md:mx-0 w-fit">
-            <span>📍</span> عرض على خرائط جوجل
-          </a>
-        </div>
-
+        <div><div class="flex items-center gap-2 justify-center md:justify-start mb-4"><span class="text-3xl">🏢</span><h3 class="text-xl font-bold">مدير العقارات</h3></div><p class="text-slate-400 text-sm leading-relaxed">منصة متكاملة لإدارة الأملاك العقارية، تهدف لتسهيل عملية التأجير والتحصيل للملاك والمستأجرين بكل كفاءة وشفافية.</p></div>
+        <div><h4 class="font-bold text-lg mb-4 text-indigo-400">تواصل معنا</h4><div class="space-y-3"><a href="tel:0505933925" class="block text-slate-300 hover:text-white transition flex items-center justify-center md:justify-start gap-2"><span>📞</span> 0505933925</a><a href="https://wa.me/966505933925" target="_blank" class="block text-slate-300 hover:text-white transition flex items-center justify-center md:justify-start gap-2"><span>💬</span> واتساب مباشر</a></div></div>
+        <div><h4 class="font-bold text-lg mb-4 text-indigo-400">الموقع</h4><p class="text-slate-400 text-sm mb-4">يمكنك الوصول لموقع العقار مباشرة عبر الخرائط:</p><a href="https://maps.app.goo.gl/2wK7b9rdcZTCmfAa9" target="_blank" class="inline-block bg-slate-800 border border-slate-700 hover:bg-slate-700 text-white py-2 px-4 rounded-lg transition flex items-center justify-center gap-2 mx-auto md:mx-0 w-fit"><span>📍</span> عرض على خرائط جوجل</a></div>
       </div>
-      
-      <div class="border-t border-slate-800 mt-10 pt-6 text-center text-slate-500 text-sm">
-        © 2026 جميع الحقوق محفوظة لمنصة مدير العقارات.
-      </div>
+      <div class="border-t border-slate-800 mt-10 pt-6 text-center text-slate-500 text-sm">© 2026 جميع الحقوق محفوظة لمنصة مدير العقارات.</div>
     </footer>
 
   </div>
@@ -244,10 +209,10 @@ const router = useRouter()
 
 const vacantUnits = ref([])
 const loading = ref(true)
-// ✅ تحديث رقم المالك (966 + الرقم بدون صفر) ليعمل مع الواتساب
 const ownerPhone = '966505933925' 
 
 const loginPhone = ref('')
+const loginPin = ref('') // 👈 متغير الرمز السري الجديد
 const loginLoading = ref(false)
 const loginError = ref('')
 
@@ -260,10 +225,11 @@ const handleTenantLogin = async () => {
       .from('tenants')
       .select('id')
       .eq('phone', loginPhone.value)
+      .eq('pin_code', loginPin.value) // 👈 التحقق من الرمز السري هنا
       .single()
 
     if (error || !data) {
-      loginError.value = 'رقم الجوال غير مسجل لدينا، يرجى التأكد أو التواصل مع الإدارة.'
+      loginError.value = 'بيانات الدخول غير صحيحة! تأكد من رقم الجوال والرمز السري.'
     } else {
       router.push(`/portal/${data.id}`)
     }

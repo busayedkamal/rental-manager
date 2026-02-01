@@ -5,12 +5,18 @@ export default defineNuxtConfig({
 
   modules: ['@nuxtjs/tailwindcss', '@nuxtjs/supabase'],
 
-  supabase: {
-    // 👇👇 هذان السطران هما الحل للمشكلة (تمت إضافتهما)
-    url: process.env.SUPABASE_URL,
-    key: process.env.SUPABASE_KEY,
-    // 👆👆
+  // ✅ الأفضل لـ Nuxt 3: تثبيت القيم في runtimeConfig
+  runtimeConfig: {
+    public: {
+      supabase: {
+        url: process.env.SUPABASE_URL || process.env.NUXT_PUBLIC_SUPABASE_URL,
+        key: process.env.SUPABASE_KEY || process.env.NUXT_PUBLIC_SUPABASE_KEY,
+      },
+    },
+  },
 
+  // ✅ Supabase SSR (Vercel + Universal Rendering)
+  supabase: {
     useSsrCookies: true,
     redirect: false,
     cookieOptions: {

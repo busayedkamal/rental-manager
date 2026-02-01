@@ -6,10 +6,14 @@ export default defineNuxtConfig({
   modules: ['@nuxtjs/tailwindcss', '@nuxtjs/supabase'],
 
   supabase: {
-    // ❌ تم حذف url و key من هنا لتفعيل التعرف التلقائي
-    
-    useSsrCookies: true,
+    // 👇 العودة للربط اليدوي (لضمان قراءة المفاتيح)
+    // يقرأ إما SUPABASE_URL أو NUXT_SUPABASE_URL (أيهما موجود)
+    url: process.env.SUPABASE_URL || process.env.NUXT_SUPABASE_URL,
+    key: process.env.SUPABASE_KEY || process.env.NUXT_SUPABASE_KEY,
+
     redirect: false,
+    useSsrCookies: true,
+    
     cookieOptions: {
       maxAge: 60 * 60 * 8,
       sameSite: 'lax',

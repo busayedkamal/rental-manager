@@ -5,27 +5,21 @@ export default defineNuxtConfig({
 
   modules: ['@nuxtjs/tailwindcss', '@nuxtjs/supabase'],
 
-  // ✅ إعدادات Supabase
   supabase: {
-    // 👇 (هام جداً) إجبار المكتبة على قراءة المفاتيح من ملف البيئة
+    // 👇👇 هذان السطران هما الحل للمشكلة (تمت إضافتهما)
     url: process.env.SUPABASE_URL,
     key: process.env.SUPABASE_KEY,
+    // 👆👆
 
-    // تفعيل الكوكيز لضمان استمرار الجلسة
     useSsrCookies: true,
-
-    // إيقاف التوجيه التلقائي (لأننا نستخدم middleware خاص)
     redirect: false,
-
-    // إعدادات الكوكيز للأمان
     cookieOptions: {
-      maxAge: 60 * 60 * 8, // 8 ساعات
+      maxAge: 60 * 60 * 8,
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
     },
   },
 
-  // 👇 إعدادات الخطوط والتصميم
   app: {
     head: {
       link: [

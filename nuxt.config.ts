@@ -5,23 +5,27 @@ export default defineNuxtConfig({
 
   modules: ['@nuxtjs/tailwindcss', '@nuxtjs/supabase'],
 
-  // ✅ Supabase SSR (مناسب لـ Vercel + Universal Rendering)
+  // ✅ إعدادات Supabase
   supabase: {
-    // اجعل SSR يقرأ/يكتب الجلسة عبر cookies (مهم لـ SSR كامل)
+    // 👇 (هام جداً) إجبار المكتبة على قراءة المفاتيح من ملف البيئة
+    url: process.env.SUPABASE_URL,
+    key: process.env.SUPABASE_KEY,
+
+    // تفعيل الكوكيز لضمان استمرار الجلسة
     useSsrCookies: true,
 
-    // أنت تتحكم بالحماية عبر middleware بدل التحويل التلقائي
+    // إيقاف التوجيه التلقائي (لأننا نستخدم middleware خاص)
     redirect: false,
 
-    // ✅ مهم للإنتاج على HTTPS + التطوير على HTTP
+    // إعدادات الكوكيز للأمان
     cookieOptions: {
-      maxAge: 60 * 60 * 8, // 8 ساعات (غيّرها حسب احتياجك)
+      maxAge: 60 * 60 * 8, // 8 ساعات
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
     },
   },
 
-  // 👇 إعدادات الخطوط
+  // 👇 إعدادات الخطوط والتصميم
   app: {
     head: {
       link: [

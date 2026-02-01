@@ -5,18 +5,9 @@ export default defineNuxtConfig({
 
   modules: ['@nuxtjs/tailwindcss', '@nuxtjs/supabase'],
 
-  // ✅ الأفضل لـ Nuxt 3: تثبيت القيم في runtimeConfig
-  runtimeConfig: {
-    public: {
-      supabase: {
-        url: process.env.SUPABASE_URL || process.env.NUXT_PUBLIC_SUPABASE_URL,
-        key: process.env.SUPABASE_KEY || process.env.NUXT_PUBLIC_SUPABASE_KEY,
-      },
-    },
-  },
-
-  // ✅ Supabase SSR (Vercel + Universal Rendering)
   supabase: {
+    // ❌ تم حذف url و key من هنا لتفعيل التعرف التلقائي
+    
     useSsrCookies: true,
     redirect: false,
     cookieOptions: {

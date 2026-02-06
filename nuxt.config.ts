@@ -5,12 +5,8 @@ export default defineNuxtConfig({
 
   modules: ['@nuxtjs/tailwindcss', '@nuxtjs/supabase'],
 
+  // 1️⃣ إعدادات Supabase (بدون مفاتيح هنا!)
   supabase: {
-    // 👇 التعديل الجوهري: ربط مباشر وصريح بالمفاتيح القياسية
-    url: process.env.SUPABASE_URL,
-    key: process.env.SUPABASE_KEY,
-
-    // إعدادات الكوكيز والتحويل
     redirect: false,
     useSsrCookies: true,
     cookieOptions: {
@@ -20,6 +16,17 @@ export default defineNuxtConfig({
     },
   },
 
+  // 2️⃣ إعدادات التشغيل (هنا نمرر المفاتيح بشكل آمن)
+  runtimeConfig: {
+    public: {
+      supabase: {
+        url: process.env.SUPABASE_URL,
+        key: process.env.SUPABASE_KEY
+      }
+    }
+  },
+
+  // 3️⃣ إعدادات التطبيق والخطوط
   app: {
     head: {
       link: [

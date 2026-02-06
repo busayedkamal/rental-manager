@@ -1,89 +1,112 @@
 <template>
-  <div class="space-y-8">
+  <div class="space-y-8 font-sans text-slate-800" dir="rtl">
     
-    <div class="bg-white rounded-xl shadow-md overflow-hidden p-6 border-t-4 border-indigo-500">
-      <h2 class="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-        <span>👤</span> {{ isEditing ? 'تعديل بيانات مستأجر' : 'إضافة مستأجر جديد' }}
-      </h2>
-
-      <form @submit.prevent="saveTenant" class="flex gap-4 items-end flex-wrap">
-        
-        <div class="flex-1 min-w-[200px]">
-          <label class="block text-sm font-medium text-gray-700 mb-1">اسم المستأجر / الجهة</label>
-          <input v-model="form.name" type="text" required class="input-field" placeholder="مثال: مؤسسة التقنية" />
-        </div>
-
-        <div class="flex-1 min-w-[200px]">
-          <label class="block text-sm font-medium text-gray-700 mb-1">الشخص المسؤول (اختياري)</label>
-          <input v-model="form.contact_person" type="text" class="input-field" placeholder="مثال: أ. محمد أحمد" />
-        </div>
-
-        <div class="flex-1 min-w-[200px]">
-          <label class="block text-sm font-medium text-gray-700 mb-1">الجوال</label>
-          <input v-model="form.phone" type="text" class="input-field" placeholder="05xxxxxxxx" />
-        </div>
-        
-        <div class="flex-1 min-w-[200px]">
-          <label class="block text-sm font-medium text-gray-700 mb-1">الإيميل</label>
-          <input v-model="form.email" type="email" class="input-field" placeholder="اختياري" />
-        </div>
-        
-        <div class="flex gap-2 w-full md:w-auto mt-2 md:mt-0">
-          <button type="submit" :disabled="loading" class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 font-bold h-[42px] min-w-[120px] shadow-sm">
-            {{ loading ? '...' : (isEditing ? 'حفظ التعديلات' : 'إضافة') }}
-          </button>
-          
-          <button v-if="isEditing" @click="cancelEdit" type="button" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 font-bold h-[42px]">
-            إلغاء
-          </button>
-        </div>
-      </form>
-    </div>
-
-    <div class="bg-white rounded-xl shadow-md overflow-hidden">
-      <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
-        <h2 class="text-lg font-bold text-gray-700">📋 سجل المستأجرين ({{ tenants.length }})</h2>
-        <button @click="fetchTenants" class="text-indigo-600 text-sm hover:underline">🔄 تحديث</button>
+    <div class="flex flex-col md:flex-row justify-between items-end gap-4">
+      <div>
+        <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">👥 سجل المستأجرين</h1>
+        <p class="text-slate-500 mt-1 text-sm font-medium">إدارة بيانات العملاء، العقود النشطة، والتواصل</p>
       </div>
       
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50 text-gray-500 text-xs uppercase font-medium">
+      <div class="flex gap-3 w-full md:w-auto">
+        <div class="relative flex-1 md:w-64">
+          <input 
+            v-model="searchQuery" 
+            type="text" 
+            placeholder="بحث بالاسم أو الجوال..." 
+            class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm"
+          >
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+        </div>
+
+        <button 
+          @click="openModal()" 
+          class="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-indigo-700 transition shadow-sm shadow-indigo-200 flex items-center gap-2 whitespace-nowrap"
+        >
+          <span>➕</span> مستأجر جديد
+        </button>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-slate-200 min-h-[400px] flex flex-col">
+      
+      <div v-if="pending && !tenants.length" class="flex-1 flex flex-col items-center justify-center p-12 text-slate-400">
+        <div class="w-10 h-10 border-4 border-slate-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
+        <p>جاري تحميل البيانات...</p>
+      </div>
+
+      <div v-else class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-slate-100">
+          <thead class="bg-slate-50 text-xs text-slate-500 uppercase font-bold tracking-wider">
             <tr>
-              <th class="px-6 py-3 text-right">الاسم / المسؤول</th>
-              <th class="px-6 py-3 text-right">الجوال</th>
-              <th class="px-6 py-3 text-right">بوابة المستأجر</th>
-              <th class="px-6 py-3 text-center">إجراءات</th>
+              <th class="px-6 py-4 text-right">المستأجر</th>
+              <th class="px-6 py-4 text-right">معلومات الاتصال</th>
+              <th class="px-6 py-4 text-right">رقم الهوية</th>
+              <th class="px-6 py-4 text-center">تواصل</th>
+              <th class="px-6 py-4 text-center">إجراءات</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-200">
-            <tr v-for="tenant in tenants" :key="tenant.id" class="hover:bg-indigo-50 transition-colors">
-              
-              <td class="p-0 relative group cursor-pointer">
-                <NuxtLink :to="`/tenants/${tenant.id}`" class="block px-6 py-4 w-full h-full text-inherit no-underline">
-                  <div class="font-bold text-gray-800 text-base group-hover:text-indigo-600 transition-colors flex items-center gap-2">
-                    {{ tenant.name }}
-                    <span class="text-[10px] bg-indigo-50 text-indigo-500 px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                      ↗ التفاصيل
-                    </span>
-                  </div>
-                  <div v-if="tenant.contact_person" class="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                    <span class="bg-gray-100 px-1 rounded">مسؤول:</span> {{ tenant.contact_person }}
-                  </div>
-                </NuxtLink>
-              </td>
-
-              <td class="px-6 py-4 text-gray-600 text-right" dir="ltr">{{ tenant.phone }}</td>
+          <tbody class="divide-y divide-slate-50 bg-white">
+            <tr v-for="tenant in filteredTenants" :key="tenant.id" class="hover:bg-indigo-50/30 transition-colors group">
               
               <td class="px-6 py-4">
-                <button @click="copyPortalLink(tenant.id)" class="text-xs bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full border border-indigo-200 hover:bg-indigo-100 flex items-center gap-1 w-fit transition font-medium">
-                  🔗 نسخ الرابط
-                </button>
+                <div class="flex items-center gap-3">
+                  <div class="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold border border-slate-200">
+                    {{ tenant.name.charAt(0) }}
+                  </div>
+                  <div>
+                    <div class="font-bold text-slate-900">{{ tenant.name }}</div>
+                    <div class="text-xs text-slate-400">ID: #{{ tenant.id.toString().padStart(4, '0') }}</div>
+                  </div>
+                </div>
               </td>
-
-              <td class="px-6 py-4 flex justify-center gap-3">
-                <button @click="editTenant(tenant)" class="text-blue-600 hover:bg-blue-100 p-2 rounded-full transition" title="تعديل">✏️</button>
-                <button @click="deleteTenant(tenant.id)" class="text-red-600 hover:bg-red-100 p-2 rounded-full transition" title="حذف">🗑️</button>
+              
+              <td class="px-6 py-4">
+                <div class="text-sm font-medium text-slate-700 font-mono">{{ tenant.phone_number }}</div>
+                <div v-if="tenant.email" class="text-xs text-slate-400 mt-0.5">{{ tenant.email }}</div>
+              </td>
+              
+              <td class="px-6 py-4">
+                <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-mono font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                  {{ tenant.id_number || '---' }}
+                </span>
+              </td>
+              
+              <td class="px-6 py-4 text-center">
+                <a 
+                  v-if="tenant.phone_number"
+                  :href="`https://wa.me/${tenant.phone_number.replace('+', '').replace(/\s/g, '')}`" 
+                  target="_blank"
+                  class="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg hover:bg-emerald-100 transition border border-emerald-100"
+                >
+                  <span class="text-lg">💬</span> واتساب
+                </a>
+              </td>
+              
+              <td class="px-6 py-4 text-center">
+                <div class="flex items-center justify-center gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
+                  <button 
+                    @click="openModal(tenant)" 
+                    class="p-2 rounded-lg text-indigo-600 hover:bg-indigo-50 border border-transparent hover:border-indigo-100 transition"
+                    title="تعديل"
+                  >
+                    ✏️
+                  </button>
+                  <button 
+                    @click="deleteTenant(tenant.id)" 
+                    :disabled="busy[tenant.id]"
+                    class="p-2 rounded-lg text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-100 transition disabled:opacity-50"
+                    title="حذف"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              </td>
+            </tr>
+            
+            <tr v-if="filteredTenants.length === 0">
+              <td colspan="5" class="p-12 text-center text-slate-400">
+                <span class="text-4xl block mb-2 opacity-50">👥</span>
+                لا يوجد مستأجرين يطابقون البحث.
               </td>
             </tr>
           </tbody>
@@ -91,81 +114,168 @@
       </div>
     </div>
 
+    <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center p-4" dir="rtl">
+      <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" @click="closeModal"></div>
+      
+      <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden relative z-10 transform transition-all scale-100">
+        <div class="bg-slate-50 p-4 border-b border-slate-200 flex justify-between items-center">
+          <h3 class="font-bold text-slate-800">{{ isEditing ? '✏️ تعديل بيانات مستأجر' : '➕ إضافة مستأجر جديد' }}</h3>
+          <button @click="closeModal" class="text-slate-400 hover:text-slate-600 text-xl">✕</button>
+        </div>
+        
+        <form @submit.prevent="saveTenant" class="p-6 space-y-4">
+          <div>
+            <label class="text-xs font-bold text-slate-500 uppercase mb-1.5 block">الاسم الكامل <span class="text-rose-500">*</span></label>
+            <input v-model="form.name" type="text" class="input-field" required placeholder="مثال: محمد عبدالله">
+          </div>
+          
+          <div>
+            <label class="text-xs font-bold text-slate-500 uppercase mb-1.5 block">رقم الجوال <span class="text-rose-500">*</span></label>
+            <input v-model="form.phone_number" type="tel" class="input-field dir-ltr text-right" required placeholder="9665xxxxxxxx">
+            <p class="text-xs text-slate-400 mt-1">يفضل بالصيغة الدولية لعمل الواتساب</p>
+          </div>
+          
+          <div>
+            <label class="text-xs font-bold text-slate-500 uppercase mb-1.5 block">رقم الهوية</label>
+            <input v-model="form.id_number" type="text" class="input-field" placeholder="اختياري">
+          </div>
+
+          <div>
+            <label class="text-xs font-bold text-slate-500 uppercase mb-1.5 block">البريد الإلكتروني</label>
+            <input v-model="form.email" type="email" class="input-field dir-ltr text-right" placeholder="example@mail.com">
+          </div>
+
+          <div class="pt-4 flex gap-3">
+            <button 
+              type="submit" 
+              :disabled="saving"
+              class="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 shadow-sm transition disabled:opacity-70 flex justify-center items-center gap-2"
+            >
+              <span v-if="saving" class="animate-spin">⏳</span>
+              <span>حفظ البيانات</span>
+            </button>
+            <button 
+              type="button" 
+              @click="closeModal"
+              class="flex-1 bg-white text-slate-700 border border-slate-300 py-3 rounded-xl font-bold hover:bg-slate-50 transition"
+            >
+              إلغاء
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { createClient } from '@supabase/supabase-js'
+import { ref, computed, reactive } from 'vue'
 
-const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_KEY)
-const loading = ref(false)
-const tenants = ref([])
-const form = ref({ name: '', phone: '', email: '', contact_person: '' })
-const isEditing = ref(false)
-const editingId = ref(null)
+const supabase = useSupabaseClient()
+const searchQuery = ref('')
+const showModal = ref(false)
+const saving = ref(false)
+const busy = reactive({})
 
-const fetchTenants = async () => {
-  const { data } = await supabase.from('tenants').select('*').order('created_at', { ascending: false })
-  tenants.value = data || []
-}
+const form = ref({
+  id: null,
+  name: '',
+  phone_number: '',
+  id_number: '',
+  email: ''
+})
 
-const saveTenant = async () => {
-  loading.value = true
-  let error = null
-  
-  if (isEditing.value) {
-    const { error: updateError } = await supabase.from('tenants').update(form.value).eq('id', editingId.value)
-    error = updateError
+const isEditing = computed(() => !!form.value.id)
+
+// جلب البيانات
+const { data: tenants, pending, refresh } = await useAsyncData('tenants-list', async () => {
+  const { data } = await supabase
+    .from('tenants')
+    .select('*')
+    .order('created_at', { ascending: false })
+  return data || []
+})
+
+// البحث
+const filteredTenants = computed(() => {
+  if (!searchQuery.value) return tenants.value || []
+  const q = searchQuery.value.toLowerCase()
+  return (tenants.value || []).filter(t => 
+    t.name.toLowerCase().includes(q) || 
+    t.phone_number?.includes(q) ||
+    t.id_number?.includes(q)
+  )
+})
+
+// إدارة المودال
+const openModal = (tenant = null) => {
+  if (tenant) {
+    form.value = { ...tenant } // وضع التعديل
   } else {
-    const { error: insertError } = await supabase.from('tenants').insert([form.value])
-    error = insertError
+    form.value = { id: null, name: '', phone_number: '', id_number: '', email: '' } // وضع الإضافة
   }
-
-  if (error) alert('خطأ: ' + error.message)
-  else {
-    cancelEdit()
-    fetchTenants()
-  }
-  loading.value = false
+  showModal.value = true
 }
 
-const editTenant = (tenant) => {
-  form.value = { 
-    name: tenant.name, 
-    phone: tenant.phone, 
-    email: tenant.email, 
-    contact_person: tenant.contact_person || '' 
+const closeModal = () => {
+  showModal.value = false
+}
+
+// الحفظ (إضافة أو تعديل)
+const saveTenant = async () => {
+  saving.value = true
+  try {
+    const payload = {
+      name: form.value.name,
+      phone_number: form.value.phone_number,
+      id_number: form.value.id_number,
+      email: form.value.email
+    }
+
+    if (isEditing.value) {
+      // تحديث
+      const { error } = await supabase
+        .from('tenants')
+        .update(payload)
+        .eq('id', form.value.id)
+      if (error) throw error
+    } else {
+      // إضافة جديد
+      const { error } = await supabase
+        .from('tenants')
+        .insert([payload])
+      if (error) throw error
+    }
+
+    await refresh()
+    closeModal()
+  } catch (e) {
+    alert('حدث خطأ: ' + e.message)
+  } finally {
+    saving.value = false
   }
-  isEditing.value = true
-  editingId.value = tenant.id
-  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-const cancelEdit = () => {
-  form.value = { name: '', phone: '', email: '', contact_person: '' }
-  isEditing.value = false
-  editingId.value = null
-}
-
+// الحذف
 const deleteTenant = async (id) => {
-  if (!confirm('تنبيه: سيتم حذف المستأجر وجميع العقود المرتبطة به! هل أنت متأكد؟')) return
-  const { error } = await supabase.from('tenants').delete().eq('id', id)
-  if (error) alert('لا يمكن الحذف: توجد بيانات مرتبطة.')
-  else fetchTenants()
+  if (!confirm('⚠️ تحذير: حذف المستأجر قد يؤثر على العقود والفواتير المرتبطة به.\nهل أنت متأكد؟')) return
+  
+  busy[id] = true
+  try {
+    const { error } = await supabase.from('tenants').delete().eq('id', id)
+    if (error) throw error
+    await refresh()
+  } catch (e) {
+    alert('لا يمكن حذف المستأجر (غالباً بسبب وجود عقود مرتبطة به).')
+  } finally {
+    busy[id] = false
+  }
 }
-
-const copyPortalLink = (id) => {
-  const url = `${window.location.origin}/portal/${id}`
-  navigator.clipboard.writeText(url)
-  alert('تم نسخ رابط بوابة المستأجر! 📋')
-}
-
-onMounted(() => fetchTenants())
 </script>
 
 <style scoped>
 .input-field {
-  @apply w-full rounded-lg border-gray-300 border p-2 focus:ring-2 focus:ring-indigo-500 outline-none h-[42px] transition-shadow;
+  @apply w-full rounded-xl border border-slate-300 bg-white p-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all shadow-sm;
 }
 </style>

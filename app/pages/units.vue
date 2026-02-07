@@ -212,7 +212,7 @@ import { useRouter } from 'vue-router' // 👈 استيراد الراوتر
 import { createClient } from '@supabase/supabase-js'
 
 const router = useRouter()
-const supabase = createClient(import.meta.env.NUXT_PUBLIC_SUPABASE_URL, import.meta.env.NUXT_PUBLIC_SUPABASE_KEY)
+const supabase = useSupabaseClient()
 const units = ref([])
 const loading = ref(false)
 const viewMode = ref('grid')

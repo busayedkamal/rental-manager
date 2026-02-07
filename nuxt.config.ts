@@ -1,8 +1,3 @@
-// تعريف المتغيرات في البداية لضمان التقاطها
-// نحاول التقاط المتغير العام، ثم الخاص، ثم قيمة مؤقتة لمنع الانهيار
-const dbUrl = process.env.NUXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || 'https://temp-placeholder.supabase.co'
-const dbKey = process.env.NUXT_PUBLIC_SUPABASE_KEY || process.env.SUPABASE_KEY || 'temp-placeholder-key'
-
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
@@ -11,9 +6,9 @@ export default defineNuxtConfig({
   modules: ['@nuxtjs/tailwindcss', '@nuxtjs/supabase'],
 
   supabase: {
-    // نمرر القيم التي التقطناها بالأعلى
-    url: dbUrl,
-    key: dbKey,
+    // 👇 سنضع القيم الحقيقية مباشرة (مؤقتاً) لنكسر دائرة الخطأ
+    url: 'https://grrnpabudbkuxgipjrwm.supabase.co',
+    key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdycm5wYWJ1ZGJrdXhnaXBqcndtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc4OTI0ODAsImV4cCI6MjA4MzQ2ODQ4MH0.Trs4OMwTwTo-Ik4_E3Vg6AB1iLFk4ASc25_oDy91vsk',
 
     redirect: false,
     useSsrCookies: true,
@@ -24,12 +19,12 @@ export default defineNuxtConfig({
     },
   },
 
-  // نكررها في runtimeConfig لضمان وصولها للمتصفح
+  // ⚠️ هام جداً: نحتاج runtimeConfig لكي يرى المتصفح هذه القيم أيضاً
   runtimeConfig: {
     public: {
       supabase: {
-        url: dbUrl,
-        key: dbKey,
+        url: 'https://grrnpabudbkuxgipjrwm.supabase.co',
+        key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdycm5wYWJ1ZGJrdXhnaXBqcndtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc4OTI0ODAsImV4cCI6MjA4MzQ2ODQ4MH0.Trs4OMwTwTo-Ik4_E3Vg6AB1iLFk4ASc25_oDy91vsk',
       }
     }
   },

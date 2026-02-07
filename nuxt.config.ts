@@ -6,6 +6,8 @@ export default defineNuxtConfig({
   modules: ['@nuxtjs/tailwindcss', '@nuxtjs/supabase'],
 
   supabase: {
+    // ⚠️ لا تكتب أي روابط هنا
+    // الموديول سيكتشف NUXT_PUBLIC_SUPABASE_URL من Vercel تلقائياً
     redirect: false,
     useSsrCookies: true,
     cookieOptions: {
@@ -15,16 +17,8 @@ export default defineNuxtConfig({
     },
   },
 
-  // 👇 هذا هو "الجسر" المفقود!
-  // نقوم بربط متغيرات Vercel بإعدادات الموديول يدوياً
-  runtimeConfig: {
-    public: {
-      supabase: {
-        url: process.env.NUXT_PUBLIC_SUPABASE_URL,
-        key: process.env.NUXT_PUBLIC_SUPABASE_KEY,
-      }
-    }
-  },
+  // ❌ احذف قسم runtimeConfig تماماً من هنا
+  // وجوده يدوياً هو ما يسبب المشكلة لأنه يطغى على القيم التلقائية
 
   app: {
     head: {

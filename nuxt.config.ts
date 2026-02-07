@@ -3,10 +3,12 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
 
+  // استدعاء الموديول فقط
   modules: ['@nuxtjs/tailwindcss', '@nuxtjs/supabase'],
 
+  // إعدادات Supabase (بدون مفاتيح!)
   supabase: {
-    // نترك الموديول يقرأ المتغيرات تلقائياً من NUXT_PUBLIC_SUPABASE_URL
+    // ⚠️ لا تضع url ولا key هنا، الموديول سيقرأ NUXT_PUBLIC_SUPABASE_URL تلقائياً من Vercel
     redirect: false,
     useSsrCookies: true,
     cookieOptions: {
@@ -14,16 +16,6 @@ export default defineNuxtConfig({
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
     },
-  },
-
-  // لضمان عمل المتغيرات في المتصفح
-  runtimeConfig: {
-    public: {
-      supabase: {
-        url: process.env.NUXT_PUBLIC_SUPABASE_URL,
-        key: process.env.NUXT_PUBLIC_SUPABASE_KEY,
-      }
-    }
   },
 
   app: {

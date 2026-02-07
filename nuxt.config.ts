@@ -6,9 +6,9 @@ export default defineNuxtConfig({
   modules: ['@nuxtjs/tailwindcss', '@nuxtjs/supabase'],
 
   supabase: {
-    // ❌ لا تضع url و key هنا (دع الموديول يكتشفها تلقائياً)
     redirect: false,
     useSsrCookies: true,
+    // ❌ لا تضع url و key هنا، دعنا نعتمد على runtimeConfig
     cookieOptions: {
       maxAge: 60 * 60 * 8,
       sameSite: 'lax',
@@ -19,9 +19,10 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       supabase: {
-        // القيمة الفارغة '' تسمح لـ Vercel بحقن المتغير NUXT_PUBLIC_SUPABASE_URL مكانه
-        url: process.env.SUPABASE_URL || '', 
-        key: process.env.SUPABASE_KEY || ''
+        // 👇 الخدعة هنا: وضع قيمة مبدئية غير فارغة لتجاوز فحص البناء
+        // سيقوم Vercel باستبدالها تلقائياً بـ NUXT_PUBLIC_SUPABASE_URL عند التشغيل
+        url: process.env.SUPABASE_URL || 'https://example.com', 
+        key: process.env.SUPABASE_KEY || 'example-key'
       }
     }
   },

@@ -6,26 +6,21 @@ export default defineNuxtConfig({
   modules: ['@nuxtjs/tailwindcss', '@nuxtjs/supabase'],
 
   supabase: {
+    // ✅ الحل الجذري: نستخدم المتغيرات العامة مباشرة
+    // Vercel يكشف هذه المتغيرات أثناء البناء، فيتم "تثبيتها" داخل الموقع
+    url: process.env.NUXT_PUBLIC_SUPABASE_URL,
+    key: process.env.NUXT_PUBLIC_SUPABASE_KEY,
+
     redirect: false,
     useSsrCookies: true,
-    // ❌ لا تضع url و key هنا، دعنا نعتمد على runtimeConfig
     cookieOptions: {
       maxAge: 60 * 60 * 8,
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
     },
   },
-
-  runtimeConfig: {
-    public: {
-      supabase: {
-        // 👇 الخدعة هنا: وضع قيمة مبدئية غير فارغة لتجاوز فحص البناء
-        // سيقوم Vercel باستبدالها تلقائياً بـ NUXT_PUBLIC_SUPABASE_URL عند التشغيل
-        url: process.env.SUPABASE_URL || 'https://example.com', 
-        key: process.env.SUPABASE_KEY || 'example-key'
-      }
-    }
-  },
+  
+  // ❌ حذفنا runtimeConfig اليدوي لكي لا يسبب تشويشاً
 
   app: {
     head: {

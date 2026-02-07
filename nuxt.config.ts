@@ -1,3 +1,8 @@
+// تعريف المتغيرات في البداية لضمان التقاطها
+// نحاول التقاط المتغير العام، ثم الخاص، ثم قيمة مؤقتة لمنع الانهيار
+const dbUrl = process.env.NUXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || 'https://temp-placeholder.supabase.co'
+const dbKey = process.env.NUXT_PUBLIC_SUPABASE_KEY || process.env.SUPABASE_KEY || 'temp-placeholder-key'
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
@@ -6,10 +11,9 @@ export default defineNuxtConfig({
   modules: ['@nuxtjs/tailwindcss', '@nuxtjs/supabase'],
 
   supabase: {
-    // ✅ الحل الجذري: نستخدم المتغيرات العامة مباشرة
-    // Vercel يكشف هذه المتغيرات أثناء البناء، فيتم "تثبيتها" داخل الموقع
-    url: process.env.NUXT_PUBLIC_SUPABASE_URL,
-    key: process.env.NUXT_PUBLIC_SUPABASE_KEY,
+    // نمرر القيم التي التقطناها بالأعلى
+    url: dbUrl,
+    key: dbKey,
 
     redirect: false,
     useSsrCookies: true,
@@ -19,8 +23,16 @@ export default defineNuxtConfig({
       secure: process.env.NODE_ENV === 'production',
     },
   },
-  
-  // ❌ حذفنا runtimeConfig اليدوي لكي لا يسبب تشويشاً
+
+  // نكررها في runtimeConfig لضمان وصولها للمتصفح
+  runtimeConfig: {
+    public: {
+      supabase: {
+        url: dbUrl,
+        key: dbKey,
+      }
+    }
+  },
 
   app: {
     head: {

@@ -5,12 +5,8 @@ export default defineNuxtConfig({
 
   modules: ['@nuxtjs/tailwindcss', '@nuxtjs/supabase'],
 
-  // 1️⃣ إعدادات Supabase للموديول (لحل مشكلة البناء والتحذيرات)
   supabase: {
-    // نقرأ من متغيرات البيئة القياسية أو متغيرات NUXT
-    url: process.env.SUPABASE_URL || process.env.NUXT_PUBLIC_SUPABASE_URL,
-    key: process.env.SUPABASE_KEY || process.env.NUXT_PUBLIC_SUPABASE_KEY,
-
+    // ❌ لا تضع url و key هنا (دع الموديول يكتشفها تلقائياً)
     redirect: false,
     useSsrCookies: true,
     cookieOptions: {
@@ -20,12 +16,12 @@ export default defineNuxtConfig({
     },
   },
 
-  // 2️⃣ إعدادات التشغيل (لضمان وصول المتصفح للمفاتيح)
   runtimeConfig: {
     public: {
       supabase: {
-        url: process.env.SUPABASE_URL || process.env.NUXT_PUBLIC_SUPABASE_URL,
-        key: process.env.SUPABASE_KEY || process.env.NUXT_PUBLIC_SUPABASE_KEY,
+        // القيمة الفارغة '' تسمح لـ Vercel بحقن المتغير NUXT_PUBLIC_SUPABASE_URL مكانه
+        url: process.env.SUPABASE_URL || '', 
+        key: process.env.SUPABASE_KEY || ''
       }
     }
   },

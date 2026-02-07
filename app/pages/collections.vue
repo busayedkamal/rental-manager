@@ -211,7 +211,7 @@ import { ref, computed, onMounted } from 'vue'
 import { createClient } from '@supabase/supabase-js'
 import { useRoute } from 'vue-router'
 
-const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_KEY)
+const supabase = createClient(import.meta.env.NUXT_PUBLIC_SUPABASE_URL, import.meta.env.NUXT_PUBLIC_SUPABASE_KEY)
 const route = useRoute()
 
 const payments = ref([])

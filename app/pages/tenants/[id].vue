@@ -160,7 +160,7 @@ import { createClient } from '@supabase/supabase-js'
 import DocumentsManager from '~/components/DocumentsManager.vue'
 
 const route = useRoute()
-const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_KEY)
+const supabase = createClient(import.meta.env.NUXT_PUBLIC_SUPABASE_URL, import.meta.env.NUXT_PUBLIC_SUPABASE_KEY)
 
 const loading = ref(true)
 const tenant = ref({})

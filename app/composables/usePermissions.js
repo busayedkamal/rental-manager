@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 
 export const usePermissions = () => {
   // 1. إنشاء العميل يدوياً (لأنك لا تستخدم وحدة Nuxt الجاهزة)
-  const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_KEY)
+  const supabase = createClient(import.meta.env.NUXT_PUBLIC_SUPABASE_URL, import.meta.env.NUXT_PUBLIC_SUPABASE_KEY)
   
   // 2. حالة الدور (State) - مشترك بين كل الصفحات
   const userRole = useState('userRole', () => 'viewer')

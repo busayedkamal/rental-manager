@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 export default defineNuxtRouteMiddleware(async (to, from) => {
   if (process.server) return
 
-  const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_KEY)
+  const supabase = createClient(import.meta.env.NUXT_PUBLIC_SUPABASE_URL, import.meta.env.NUXT_PUBLIC_SUPABASE_KEY)
   const { data: { session } } = await supabase.auth.getSession()
 
   // 1. قائمة الصفحات العامة (المسموح للجميع بدخولها)

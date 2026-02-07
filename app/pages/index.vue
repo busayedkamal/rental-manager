@@ -204,7 +204,7 @@ import { useRouter } from 'vue-router'
 
 definePageMeta({ layout: false })
 
-const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_KEY)
+const supabase = createClient(import.meta.env.NUXT_PUBLIC_SUPABASE_URL, import.meta.env.NUXT_PUBLIC_SUPABASE_KEY)
 const router = useRouter()
 
 const vacantUnits = ref([])

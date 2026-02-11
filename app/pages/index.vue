@@ -204,7 +204,7 @@ import { useRouter } from 'vue-router'
 
 definePageMeta({ layout: false })
 
-const supabase = createClient(import.meta.env.NUXT_PUBLIC_SUPABASE_URL, import.meta.env.NUXT_PUBLIC_SUPABASE_KEY)
+import { supabase } from '@/supabase' // استيراد الملف اليدوي
 const router = useRouter()
 
 const vacantUnits = ref([])

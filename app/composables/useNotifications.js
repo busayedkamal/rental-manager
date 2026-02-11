@@ -1,16 +1,16 @@
 import { ref } from 'vue'
-import { createClient } from '@supabase/supabase-js'
+// 👇 التصحيح: الاستيراد يجب أن يكون في القمة وخارج الدالة
+import { supabase } from '~/supabase' 
 
 export const useNotifications = () => {
-  const supabase = createClient(import.meta.env.NUXT_PUBLIC_SUPABASE_URL, import.meta.env.NUXT_PUBLIC_SUPABASE_KEY)
   const alerts = ref([])
   const loading = ref(false)
   const hasUnread = ref(false)
 
-  // دالة تنسيق رقم الهاتف للواتساب (حذف الصفر واضافة 966)
+  // دالة تنسيق رقم الهاتف للواتساب
   const formatPhoneForWa = (phone) => {
     if (!phone) return ''
-    let p = phone.toString().replace(/\D/g, '') // حذف أي رموز
+    let p = phone.toString().replace(/\D/g, '')
     if (p.startsWith('0')) p = p.substring(1)
     if (!p.startsWith('966')) p = '966' + p
     return p
@@ -26,13 +26,13 @@ export const useNotifications = () => {
     const nextMonthStr = nextMonth.toISOString().split('T')[0]
 
     try {
-      // 1️⃣ تنبيه انتهاء العقود (خلال 30 يوم)
+      // 1️⃣ تنبيه انتهاء العقود
       const { data: expiringContracts } = await supabase
         .from('contracts')
         .select('*, tenants(name, phone)')
         .eq('status', 'ساري')
-        .lte('end_date', nextMonthStr) // أقل من أو يساوي تاريخ بعد شهر
-        .gte('end_date', todayStr) // أكبر من أو يساوي اليوم (لم ينتهِ بعد)
+        .lte('end_date', nextMonthStr)
+        .gte('end_date', todayStr)
 
       if (expiringContracts) {
         expiringContracts.forEach(c => {
@@ -49,12 +49,12 @@ export const useNotifications = () => {
         })
       }
 
-      // 2️⃣ تنبيه الدفعات المستحقة (اليوم أو متأخرة)
+      // 2️⃣ تنبيه الدفعات المستحقة
       const { data: dueInvoices } = await supabase
         .from('invoices')
         .select('*, tenants(name, phone), units(name)')
-        .neq('status', 'مدفوع') // غير مدفوعة
-        .lte('due_date', todayStr) // تاريخها اليوم أو قبل
+        .neq('status', 'مدفوع')
+        .lte('due_date', todayStr)
 
       if (dueInvoices) {
         dueInvoices.forEach(inv => {
@@ -79,7 +79,6 @@ export const useNotifications = () => {
         .eq('status', 'شاغرة')
       
       if (vacantUnits && vacantUnits.length > 0) {
-        // نجمعها في تنبيه واحد لعدم الإزعاج
         alerts.value.push({
           id: 'vacant-summary',
           type: 'vacancy',
@@ -87,7 +86,7 @@ export const useNotifications = () => {
           color: 'text-gray-600 bg-gray-100',
           title: 'وحدات شاغرة',
           desc: `يوجد ${vacantUnits.length} وحدات شاغرة حالياً تحتاج للتسويق.`,
-          actionLabel: null, // لا يوجد واتساب
+          actionLabel: null,
           internalLink: '/units'
         })
       }

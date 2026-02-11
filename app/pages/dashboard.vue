@@ -197,7 +197,7 @@
 import { ref, computed, onMounted } from 'vue'
 
 // استخدام العميل المدمج (أكثر أماناً)
-const supabase = useSupabaseClient()
+import { supabase } from '@/supabase' // استيراد الملف اليدوي
 
 const loading = ref(false)
 const stats = ref({

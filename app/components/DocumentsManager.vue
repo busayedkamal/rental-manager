@@ -50,7 +50,7 @@ import { ref, onMounted } from 'vue'
 import { createClient } from '@supabase/supabase-js'
 
 const props = defineProps({ tenantId: String }) // يجب تمرير رقم المستأجر لهذا المكون
-const supabase = createClient(import.meta.env.NUXT_PUBLIC_SUPABASE_URL, import.meta.env.NUXT_PUBLIC_SUPABASE_KEY)
+import { supabase } from '@/supabase' // استيراد الملف اليدوي
 
 const documents = ref([])
 const uploading = ref(false)

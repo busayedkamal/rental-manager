@@ -172,7 +172,7 @@
 <script setup>
 import { ref, computed, reactive } from 'vue'
 
-const supabase = useSupabaseClient()
+import { supabase } from '@/supabase' // استيراد الملف اليدوي
 const searchQuery = ref('')
 const showModal = ref(false)
 const saving = ref(false)

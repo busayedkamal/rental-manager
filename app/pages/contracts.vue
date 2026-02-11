@@ -194,7 +194,7 @@ import { ref, computed, onMounted } from 'vue'
 import { createClient } from '@supabase/supabase-js'
 import ContractPDF from '~/components/ContractPDF.vue'
 
-const supabase = createClient(import.meta.env.NUXT_PUBLIC_SUPABASE_URL, import.meta.env.NUXT_PUBLIC_SUPABASE_KEY)
+import { supabase } from '@/supabase' // استيراد الملف اليدوي
 const loading = ref(false)
 const tenants = ref([])
 const units = ref([])

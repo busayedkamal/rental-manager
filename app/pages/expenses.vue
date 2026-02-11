@@ -117,7 +117,7 @@
 <script setup>
 import { ref, computed, reactive } from 'vue'
 
-const supabase = useSupabaseClient()
+import { supabase } from '@/supabase' // استيراد الملف اليدوي
 const loading = ref(false)
 const busy = reactive({}) // حالة الحذف لكل صف
 

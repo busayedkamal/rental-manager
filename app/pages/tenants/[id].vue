@@ -160,7 +160,7 @@ import { createClient } from '@supabase/supabase-js'
 import DocumentsManager from '~/components/DocumentsManager.vue'
 
 const route = useRoute()
-const supabase = useSupabaseClient()
+import { supabase } from '@/supabase' // استيراد الملف اليدوي
 
 const loading = ref(true)
 const tenant = ref({})

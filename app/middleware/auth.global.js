@@ -1,22 +1,23 @@
-import { createClient } from '@supabase/supabase-js'
+// 👇 1. التصحيح: الاستيراد في أعلى الملف
+import { supabase } from '~/supabase' 
 
 export default defineNuxtRouteMiddleware(async (to, from) => {
+  // بما أننا ألغينا الـ SSR، هذا الكود يعمل في المتصفح فقط
   if (process.server) return
 
-  const supabase = createClient(import.meta.env.NUXT_PUBLIC_SUPABASE_URL, import.meta.env.NUXT_PUBLIC_SUPABASE_KEY)
+  // 2. جلب الجلسة الحالية
   const { data: { session } } = await supabase.auth.getSession()
 
-  // 1. قائمة الصفحات العامة (المسموح للجميع بدخولها)
-  // تشمل: الرئيسية، تسجيل الدخول، وصفحات بوابة المستأجرين
+  // 3. قائمة الصفحات العامة
   const publicPages = ['/', '/login']
   const isPublicPage = publicPages.includes(to.path) || to.path.startsWith('/portal')
 
-  // 2. إذا لم يكن مسجلاً، ويحاول دخول صفحة محمية (مثل /dashboard) -> اطرده للدخول
+  // 4. سيناريو الحماية: غير مسجل ويحاول دخول صفحة خاصة
   if (!session && !isPublicPage) {
     return navigateTo('/login')
   }
 
-  // 3. إذا كان مسجلاً (المدير)، ويحاول دخول صفحة الدخول -> حوله للوحة التحكم
+  // 5. سيناريو التوجيه: مسجل ويحاول دخول صفحة الدخول
   if (session && to.path === '/login') {
     return navigateTo('/dashboard')
   }

@@ -48,7 +48,7 @@ definePageMeta({
   layout: false
 })
 
-const supabase = createClient(import.meta.env.NUXT_PUBLIC_SUPABASE_URL, import.meta.env.NUXT_PUBLIC_SUPABASE_KEY)
+import { supabase } from '@/supabase' // استيراد الملف اليدوي
 const email = ref('')
 const password = ref('')
 const loading = ref(false)

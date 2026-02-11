@@ -59,11 +59,12 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-// ❌ حذفنا استيراد createClient لأنه غير ضروري
+// 👇 نستورد العميل اليدوي الذي أنشأناه
+import { supabase } from '~/supabase' 
 import NotificationBell from '~/components/NotificationBell.vue'
 
-// ✅ نستخدم الكومبوزابل الجاهز من Nuxt بدلاً من الإنشاء اليدوي
-const supabase = useSupabaseClient()
+// ❌ نحذف import { supabase } from '@/supabase' // استيراد الملف اليدوي
+
 const route = useRoute()
 
 const isPublicPage = computed(() => {

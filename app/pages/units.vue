@@ -212,7 +212,7 @@ import { useRouter } from 'vue-router' // 👈 استيراد الراوتر
 import { createClient } from '@supabase/supabase-js'
 
 const router = useRouter()
-const supabase = useSupabaseClient()
+import { supabase } from '@/supabase' // استيراد الملف اليدوي
 const units = ref([])
 const loading = ref(false)
 const viewMode = ref('grid')

@@ -283,7 +283,7 @@ import { ref, computed, reactive, onMounted } from 'vue'
 import InvoicePrint from '~/components/InvoicePrint.vue'
 import { usePermissions } from '~/composables/usePermissions'
 
-const supabase = useSupabaseClient()
+import { supabase } from '@/supabase' // استيراد الملف اليدوي
 const user = useSupabaseUser() // ✅ التعديل هنا: استخدام دالة نوكست الجاهزة
 
 // الصلاحيات

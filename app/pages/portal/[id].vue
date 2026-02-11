@@ -198,7 +198,7 @@ definePageMeta({
 })
 
 const route = useRoute()
-const supabase = useSupabaseClient()
+import { supabase } from '@/supabase' // استيراد الملف اليدوي
 
 const loading = ref(true)
 const tenant = ref(null)

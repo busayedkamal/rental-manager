@@ -283,11 +283,13 @@ import { ref, computed, reactive, onMounted } from 'vue'
 import InvoicePrint from '~/components/InvoicePrint.vue'
 import { usePermissions } from '~/composables/usePermissions'
 
-import { supabase } from '@/supabase' // استيراد الملف اليدوي
-const user = useSupabaseUser() // ✅ التعديل هنا: استخدام دالة نوكست الجاهزة
+// ✅ 1. الاستيراد اليدوي النظيف فقط
+import { supabase } from '~/supabase'
 
 // الصلاحيات
 const { canDelete, canEdit, setRole } = usePermissions()
+
+const user = ref(null) // تعريف المستخدم محلياً بدلاً من الطريقة القديمة
 
 // الحالة (State)
 const showEditModal = ref(false)
@@ -296,9 +298,11 @@ const selectedInvoice = ref(null)
 const currentFilter = ref('current')
 const editForm = ref({})
 const savingEdit = ref(false)
-const busy = reactive({}) // حالة انشغال كل صف
+const busy = reactive({})
+const pending = ref(false)
+const uiError = ref('')
+const invoices = ref([]) // استخدام ref عادي بدلاً من useAsyncData المعقد
 
-// ثابت "اليوم"
 const todayIso = useState('invoicesTodayIso', () => new Date().toISOString().slice(0, 10))
 
 // الفلاتر
@@ -329,29 +333,6 @@ const addDaysIso = (iso, days) => {
   d.setUTCDate(d.getUTCDate() + days)
   return d.toISOString().slice(0, 10)
 }
-
-// جلب البيانات (SSR)
-const {
-  data: invoicesRef,
-  pending,
-  refresh,
-  error: fetchError,
-} = await useAsyncData(
-  'invoices:list',
-  async () => {
-    const { data, error } = await supabase
-      .from('invoices')
-      .select('id, contract_id, due_date, amount, paid_amount, status, tenants(name), units(name)')
-      .order('due_date', { ascending: true })
-
-    if (error) throw error
-    return data ?? []
-  },
-  { server: true, default: () => [] }
-)
-
-const invoices = computed(() => invoicesRef.value || [])
-const uiError = computed(() => fetchError.value?.message || '')
 
 // الترتيب
 const sortKey = ref('due_date')
@@ -384,7 +365,6 @@ const currentStats = computed(() => {
   return { count: relevant.length, unpaid, paid }
 })
 
-// ألوان النصوص
 const getDateColor = (inv) => {
   const type = classifyInvoice(inv)
   if (type === 'paid') return 'text-emerald-600 line-through opacity-70'
@@ -393,7 +373,6 @@ const getDateColor = (inv) => {
   return 'text-slate-500'
 }
 
-// نصوص الحالة
 const getStatusLabel = (inv) => {
   const type = classifyInvoice(inv)
   if (type === 'overdue') return '⚠️ متأخر'
@@ -401,14 +380,12 @@ const getStatusLabel = (inv) => {
   return ''
 }
 
-// شارات الحالة (Badges)
 const getStatusBadge = (status) => {
   if (status === 'مدفوع') return 'bg-emerald-50 text-emerald-700 border-emerald-200'
   if (status === 'مدفوع جزئياً') return 'bg-amber-50 text-amber-700 border-amber-200'
   return 'bg-rose-50 text-rose-700 border-rose-200'
 }
 
-// الفلترة
 const filteredInvoices = computed(() => {
   return invoices.value.filter(inv => {
     const type = classifyInvoice(inv)
@@ -421,7 +398,6 @@ const filteredInvoices = computed(() => {
   })
 })
 
-// الترتيب النهائي
 const sortedInvoices = computed(() => {
   const data = [...filteredInvoices.value]
   const modifier = sortOrder.value === 'asc' ? 1 : -1
@@ -435,19 +411,44 @@ const sortedInvoices = computed(() => {
   })
 })
 
-const refreshData = () => refresh()
+// ✅ 2. دالة جلب البيانات يدوياً
+const fetchData = async () => {
+  pending.value = true
+  uiError.value = ''
+  try {
+    const { data, error } = await supabase
+      .from('invoices')
+      .select('id, contract_id, due_date, amount, paid_amount, status, tenants(name), units(name)')
+      .order('due_date', { ascending: true })
 
-// تحميل الصلاحيات عند التركيب (Client Side) لتجنب تأخير الصفحة
+    if (error) throw error
+    invoices.value = data || []
+  } catch (e) {
+    uiError.value = e.message
+  } finally {
+    pending.value = false
+  }
+}
+
+const refreshData = () => fetchData()
+
+// ✅ 3. تشغيل الدوال عند تحميل الصفحة
 onMounted(async () => {
-  if (!user.value) return
-  
-  const { data: profile, error } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.value.id)
-    .single()
+  // جلب المستخدم والصلاحيات أولاً
+  const { data: { session } } = await supabase.auth.getSession()
+  if (session?.user) {
+    user.value = session.user
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.value.id)
+      .single()
 
-  if (!error && profile?.role) setRole(profile.role)
+    if (profile?.role) setRole(profile.role)
+  }
+
+  // ثم جلب الفواتير
+  await fetchData()
 })
 
 const openInvoicePrint = (inv) => { selectedInvoice.value = inv; showPrintModal.value = true }
@@ -491,7 +492,7 @@ const saveInvoiceEdit = async () => {
     if (error) throw error
 
     closeEditModal()
-    await refresh()
+    await refreshData()
   } catch (e) {
     alert('حدث خطأ أثناء الحفظ: ' + (e.message || 'غير معروف'))
   } finally {
@@ -511,7 +512,7 @@ const undoPayment = async (inv) => {
       .eq('id', inv.id)
 
     if (error) throw error
-    await refresh()
+    await refreshData()
   } catch (e) {
     alert('خطأ: ' + (e.message || 'غير معروف'))
   } finally {
@@ -527,7 +528,7 @@ const deleteInvoice = async (id) => {
   try {
     const { error } = await supabase.from('invoices').delete().eq('id', id)
     if (error) throw error
-    await refresh()
+    await refreshData()
   } catch (e) {
     alert('حدث خطأ أثناء الحذف: ' + (e.message || 'غير معروف'))
   } finally {
@@ -536,7 +537,7 @@ const deleteInvoice = async (id) => {
 }
 </script>
 
-<style scoped>
+<style scoped lang="postcss">
 .input-field {
   @apply w-full rounded-xl border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white transition-all shadow-sm;
 }

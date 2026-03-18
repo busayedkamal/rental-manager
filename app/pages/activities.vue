@@ -72,7 +72,7 @@
 
 <script setup>
 // استخدام العميل المدمج في Nuxt (أكثر أماناً وموثوقية)
-const client = useSupabaseClient()
+import { supabase as client } from '~/supabase'
 
 // دالة تنسيق التاريخ (خارج الـ Template لتحسين الأداء)
 const formatDate = (dateString) => {
